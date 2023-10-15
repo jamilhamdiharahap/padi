@@ -1,22 +1,15 @@
 import { body, validationResult } from 'express-validator';
 
 const resigterValidation = [
- body('name')
-  .notEmpty().withMessage('Nama tidak boleh kosong')
-  .isLength({ min: 2, max: 256 }).withMessage('Nama harus memiliki panjang antara 2 hingga 256 karakter'),
-
- body('username')
-  .notEmpty().withMessage('Username tidak boleh kosong'),
-
- body('student_id_number')
-  .isLength({ min: 12, max: 12 }).withMessage('Nomor Induk Siswa harus memiliki panjang 12 karakter'),
-
+ body('email')
+  .notEmpty().withMessage('Email tidak boleh kosong')
+  .isEmail().withMessage('Email tidak valid'),
+ body('question')
+  .notEmpty().withMessage('Pertanyaan tidak boleh kosong'),
  body('reminder')
-  .notEmpty().withMessage('Reminder tidak boleh kosong'),
-
+  .notEmpty().withMessage('Pengingat tidak boleh kosong'),
  body('password')
   .isLength({ min: 6 }).withMessage('Password harus memiliki minimal 6 karakter'),
-
  (request, response, next) => {
   const errors = validationResult(request);
   if (!errors.isEmpty()) {
@@ -27,8 +20,9 @@ const resigterValidation = [
 ];
 
 const login = [
- body('username')
-  .notEmpty().withMessage('Username tidak boleh kosong'),
+ body('email')
+  .notEmpty().withMessage('Email tidak boleh kosong')
+  .isEmail().withMessage('Email tidak valid'),
  body('password')
   .isLength({ min: 6 }).withMessage('Password harus memiliki minimal 6 karakter'),
  (request, response, next) => {
@@ -40,4 +34,19 @@ const login = [
  },
 ];
 
-export { resigterValidation, login };
+const forgetPassword = [
+ body('email')
+  .notEmpty().withMessage('Email tidak boleh kosong')
+  .isEmail().withMessage('Email tidak valid'),
+ body('new_password')
+  .isLength({ min: 6 }).withMessage('Password harus memiliki minimal 6 karakter'),
+ (request, response, next) => {
+  const errors = validationResult(request);
+  if (!errors.isEmpty()) {
+   return response.status(422).json({ errors: errors.array() });
+  }
+  next();
+ },
+];
+
+export { resigterValidation, login, forgetPassword };
