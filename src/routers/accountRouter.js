@@ -60,6 +60,8 @@ accountRoutes.post("/login", login, async (req, res) => {
     user.religion = employee.religion;
     user.position_name = employee.position_name;
     user.division_name = employee.division_name;
+    user.latitude = parseFloat('-6.235064');
+    user.longitude  = parseFloat('106.821506');
 
     const token = createToken(tokenPayload);
     responHelper(res, 200, { data: user, token, message: 'Login successful' });
