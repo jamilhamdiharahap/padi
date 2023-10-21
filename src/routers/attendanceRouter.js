@@ -57,5 +57,36 @@ attendanceRoutes.get("/attendance", async (req, res) => {
  }
 });
 
+let checkedInUsers = {};
+attendanceRoutes.post('/check-in', (req, res) => {
+ try {
+  const userId = req.body;
+
+  if (checkedInUsers[userId]) {
+    return responHelper(res, 400, { message: 'Anda sudah check-in hari ini' });
+  }
+
+  const currentTime = new Date();
+  const checkInTime = new Date(currentTime);
+  checkInTime.setHours(15, 0, 0, 0);
+
+  if (currentTime > checkInTime) {
+    return responHelper(res, 400, { message: 'Waktu check-in telah berakhir (setelah jam 8 pagi)' });
+  }
+
+  checkedInUsers.status = true;
+  checkedInUsers.checkIn = userId;
+  
+  return responHelper(res, 200, { data: checkedInUsers, message: 'Check-in berhasil' });
+ } catch (error) {
+  return responHelper(res, 500, { message: error })
+ }
+});
+
+attendanceRoutes.post('/check-out', (req, res) => {
+ const workingHour = checkedInUsers.data;
+ return responHelper(res, 200, { data: workingHour, message: 'Checkout berhasil' });
+});
+
 
 export default attendanceRoutes;

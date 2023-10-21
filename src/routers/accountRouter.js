@@ -1,6 +1,6 @@
 import express from "express";
 import { generateRandomNumber } from "../helper/generateCode.js";
-import { resigterValidation, login, forgetPassword } from "../utils/validation.js";
+import { registerValidation, login, forgetPassword } from "../utils/validation.js";
 import { client } from "../connection/database.js";
 import { responHelper } from "../helper/responHelper.js";
 import CryptoJS from "crypto-js";
@@ -8,35 +8,58 @@ import { createToken } from "../utils/auth.js";
 const accountRoutes = express.Router();
 
 
+function comparePasswords(encryptedPassword, plainTextPassword, hashingKey) {
+  const decryptedPassword = CryptoJS.AES.decrypt(encryptedPassword, hashingKey).toString(CryptoJS.enc.Utf8);
+  return decryptedPassword === plainTextPassword;
+}
+
 accountRoutes.post("/login", login, async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const query = `
-    SELECT a.email, a.password, a.access_code, a.reminder, b.status 
-    FROM accounts a
-    INNER JOIN roles b ON a.role_id = b.id
-    WHERE a.email = $1
-  `;
+    const accountQuery = `
+      SELECT a.id, a.email, a.password, a.access_code, a.reminder, b.status 
+      FROM accounts a
+      INNER JOIN roles b ON a.role_id = b.id
+      WHERE a.email = $1
+    `;
 
-    const { rows } = await client.query(query, [email]);
+    const { rows } = await client.query(accountQuery, [email]);
 
     if (rows.length === 0) {
       return responHelper(res, 400, { data: null, message: 'Email Tidak Ditemukan' });
     }
 
     const user = rows[0];
-    const comparePassword = CryptoJS.AES.decrypt(user.password, process.env.HASING_KEY).toString(CryptoJS.enc.Utf8);
 
-    if (comparePassword !== password) {
+    if (!comparePasswords(user.password, password, process.env.HASING_KEY)) {
       return responHelper(res, 400, { data: null, message: 'Invalid password' });
     }
+
+    const employeeQuery = `
+      SELECT a.name, a.nip, a.date_of_birth, a.address, a.religion, b.position_name, c.division_name
+      FROM employees a
+      INNER JOIN positions b ON a.position_id = b.id
+      INNER JOIN divisions c ON c.id = b.division_id
+      WHERE account_id = $1
+    `;
+
+    const employeeItem = await client.query(employeeQuery, [user.id]);
+    const employee = employeeItem.rows[0];
 
     const tokenPayload = {
       id: user.id,
       username: user.username,
       status: user.status,
-    }
+    };
+
+    user.name = employee.name;
+    user.nip = employee.nip;
+    user.date_of_birth = employee.date_of_birth;
+    user.address = employee.address;
+    user.religion = employee.religion;
+    user.position_name = employee.position_name;
+    user.division_name = employee.division_name;
 
     const token = createToken(tokenPayload);
     responHelper(res, 200, { data: user, token, message: 'Login successful' });
@@ -51,9 +74,9 @@ async function checkIfExists(column, value) {
   return rows[0].exists;
 }
 
-accountRoutes.post("/register", resigterValidation, async (req, res) => {
+accountRoutes.post("/register", registerValidation, async (req, res) => {
   try {
-    const { email, reminder, question, password } = req.body;
+    const { email, reminder, question, password, full_name, date_of_birth, position } = req.body;
 
     const usernameExists = await checkIfExists('email', email);
 
@@ -66,11 +89,28 @@ accountRoutes.post("/register", resigterValidation, async (req, res) => {
     const query = `INSERT INTO accounts (access_code, reminder, role_id, password, email, question)
                 VALUES ($1, $2, $3, $4, $5, $6)`;
 
-    await client.query(query, [generateRandomNumber(), reminder.toUpperCase(), "baa2f5ff-3736-446b-8276-54d760808430", hashPassword, email, question]);
+    const check = await client.query(query, [generateRandomNumber(), reminder.toUpperCase(), "baa2f5ff-3736-446b-8276-54d760808430", hashPassword, email, question]);
+    if (check.command === 'INSERT') {
+      const queryAccount = `SELECT id FROM accounts WHERE email = $1`;
+      const { rows } = await client.query(queryAccount, [email])
 
-    return responHelper(res, 200, { message: 'Registrasi berhasil' });
+      const query = `INSERT INTO employees (name, date_of_birth, position_id, account_id)
+      VALUES ($1, $2, $3, $4)`;
+
+      const employees = await client.query(query, [full_name, date_of_birth, position, rows[0].id]);
+      if (employees.command !== 'INSERT') {
+        const deleteAccount = `DELETE FROM accounts WHERE email = $1`;
+        await client.query(deleteAccount, [email]);
+        return responHelper(res, 400, { message: 'Registrasi Gagal.' });
+      }
+    } else {
+      return responHelper(res, 400, { message: 'Registrasi Gagal.' });
+    }
+
+    return responHelper(res, 200, { message: 'Registrasi berhasil.' });
   } catch (error) {
-    return responHelper(res, 500, { message: 'Gagal menambahkan pengguna ke database' });
+    console.log(error)
+    return responHelper(res, 500, { message: 'Gagal menambahkan pengguna ke database.' });
   }
 });
 
