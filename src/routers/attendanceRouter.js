@@ -58,7 +58,7 @@ attendanceRoutes.get("/attendance", async (req, res) => {
 });
 
 let checkedInUsers = {};
-attendanceRoutes.post('/check-in', (req, res) => {
+attendanceRoutes.post('/checkin', (req, res) => {
  try {
   const userId = req.body;
 
@@ -83,7 +83,7 @@ attendanceRoutes.post('/check-in', (req, res) => {
  }
 });
 
-attendanceRoutes.post('/check-out', (req, res) => {
+attendanceRoutes.post('/checkout', (req, res) => {
  const workingHour = checkedInUsers.data;
  return responHelper(res, 200, { data: workingHour, message: 'Checkout berhasil' });
 });

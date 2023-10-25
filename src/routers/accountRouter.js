@@ -76,6 +76,12 @@ async function checkIfExists(column, value) {
   return rows[0].exists;
 }
 
+async function checkIfQuestion(email, question) {
+  const query = `SELECT EXISTS (SELECT 1 FROM accounts WHERE question = $1 AND email = $2)`;
+  const { rows } = await client.query(query, [question, email]);
+  return rows[0].exists;
+}
+
 accountRoutes.post("/register", registerValidation, async (req, res) => {
   try {
     const { email, reminder, question, password, full_name, date_of_birth, position } = req.body;
@@ -126,7 +132,8 @@ accountRoutes.post("/check-account", async (req, res) => {
       return responHelper(res, 400, { data: null, message: 'Email tidak valid.' });
     }
 
-    const questionExists = await checkIfExists('question', question);
+    const questionExists = await checkIfQuestion(email, question);
+
     if (!questionExists) {
       return responHelper(res, 400, { data: null, message: 'Pertanyaan tidak valid.' });
     }
