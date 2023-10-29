@@ -52,7 +52,7 @@ const checkin = [
   check('longitude').isFloat(),
   check('latitude').isFloat(),
   check('status').isIn(['CHECKIN']),
-  check('employee_id').notEmpty().withMessage('Employee Id tidak boleh kosong'),
+  check('work_type').isIn(['WFH', 'WFO', 'WFA']),
   (request, response, next) => {
     const errors = validationResult(request);
     if (!errors.isEmpty()) {
