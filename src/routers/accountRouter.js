@@ -37,7 +37,7 @@ accountRoutes.post("/login", login, async (req, res) => {
     }
 
     const employeeQuery = `
-      SELECT a.name, a.nip, a.date_of_birth, a.address, a.religion, b.position_name, c.division_name
+      SELECT a.name, a.nip, a.date_of_birth, a.address, a.id as employee_id, a.religion, b.position_name, c.division_name
       FROM employees a
       INNER JOIN positions b ON a.position_id = b.id
       INNER JOIN divisions c ON c.id = b.division_id
@@ -58,6 +58,7 @@ accountRoutes.post("/login", login, async (req, res) => {
     user.date_of_birth = employee.date_of_birth;
     user.address = employee.address;
     user.religion = employee.religion;
+    user.employee_id = employee.employee_id;
     user.position_name = employee.position_name;
     user.division_name = employee.division_name;
     user.latitude = parseFloat('-6.235064');
@@ -66,6 +67,7 @@ accountRoutes.post("/login", login, async (req, res) => {
     const token = createToken(tokenPayload);
     responHelper(res, 200, { data: user, token, message: 'Login successful' });
   } catch (error) {
+    console.log(error)
     res.status(500).json({ error: 'An error occurred while logging in' });
   }
 });
