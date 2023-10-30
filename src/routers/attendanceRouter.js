@@ -12,7 +12,7 @@ attendanceRoutes.use((req, res, next) => {
   const token = req.header("token");
 
   if (!token) {
-    return res.status(401).json({ error: "Header 'Token' tidak ada" });
+    return res.status(401).json({ error: "Header 'Token' tidak ada." });
   }
   next();
 });

@@ -9,9 +9,9 @@ const routers = express.Router();
 routers.use((req, res, next) => {
  const apiKey = req.header("API-KEY");
  if (!apiKey) {
-   return res.status(401).json({ error: "Header API-KEY tidak ada" });
+   return res.status(401).json({ error: "Header API-KEY tidak ada." });
  }
- 
+
  if (apiKey !== process.env.API_KEY) {
    return res.status(401).json({ error: "INVALID API-KEY!" });
  }
