@@ -79,10 +79,26 @@ const checkout = [
   }
 ]
 
+const checkAccount = [
+  body('email')
+    .notEmpty().withMessage('Email tidak boleh kosong')
+    .isEmail().withMessage('Email tidak valid'),
+  body('question').notEmpty().withMessage('Question tidak boleh kosong'),
+  body('question_answer').notEmpty().withMessage('Question Answer tidak boleh kosong'),
+  (request, response, next) => {
+    const errors = validationResult(request);
+    if (!errors.isEmpty()) {
+      return response.status(422).json({ errors: errors.array() });
+    }
+    next();
+  },
+];
+
 export { 
   registerValidation,
   login,
   forgetPassword,
   checkin,
-  checkout
+  checkout,
+  checkAccount
 };

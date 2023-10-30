@@ -1,16 +1,34 @@
 import express from "express";
 import { generateRandomNumber } from "../helper/generateCode.js";
-import { registerValidation, login, forgetPassword } from "../utils/validation.js";
+import {
+  registerValidation,
+  login,
+  forgetPassword,
+  checkAccount
+} from "../utils/validation.js";
 import { client } from "../connection/database.js";
 import { responHelper } from "../helper/responHelper.js";
 import CryptoJS from "crypto-js";
-import { createToken } from "../utils/auth.js";
+import { authToken, createToken } from "../utils/auth.js";
+import { verifyToken } from "../utils/tokenVerify.js";
 const accountRoutes = express.Router();
 
 
 function comparePasswords(encryptedPassword, plainTextPassword, hashingKey) {
   const decryptedPassword = CryptoJS.AES.decrypt(encryptedPassword, hashingKey).toString(CryptoJS.enc.Utf8);
   return decryptedPassword === plainTextPassword;
+}
+
+async function checkIfExists(column, value) {
+  const query = `SELECT EXISTS (SELECT 1 FROM accounts WHERE ${column} = $1)`;
+  const { rows } = await client.query(query, [value]);
+  return rows[0].exists;
+}
+
+async function checkIfQuestion(email, question) {
+  const query = `SELECT EXISTS (SELECT 1 FROM accounts WHERE question = $1 AND email = $2)`;
+  const { rows } = await client.query(query, [question, email]);
+  return rows[0].exists;
 }
 
 accountRoutes.post("/login", login, async (req, res) => {
@@ -37,7 +55,7 @@ accountRoutes.post("/login", login, async (req, res) => {
     }
 
     const employeeQuery = `
-      SELECT a.name, a.nip, a.date_of_birth, a.address, a.religion, b.position_name, c.division_name
+      SELECT a.name, a.nip, a.date_of_birth, a.address, a.religion, a.id as employeeid, b.position_name, c.division_name
       FROM employees a
       INNER JOIN positions b ON a.position_id = b.id
       INNER JOIN divisions c ON c.id = b.division_id
@@ -46,9 +64,9 @@ accountRoutes.post("/login", login, async (req, res) => {
 
     const employeeItem = await client.query(employeeQuery, [user.id]);
     const employee = employeeItem.rows[0];
-
+    
     const tokenPayload = {
-      employeeId: employee.employee_id
+      employeeId: employee.employeeid
     };
 
     user.name = employee.name;
@@ -59,7 +77,7 @@ accountRoutes.post("/login", login, async (req, res) => {
     user.position_name = employee.position_name;
     user.division_name = employee.division_name;
     user.latitude = parseFloat('-6.235064');
-    user.longitude  = parseFloat('106.821506');
+    user.longitude = parseFloat('106.821506');
 
     const token = createToken(tokenPayload);
     responHelper(res, 200, { data: user, token, message: 'Login successful' });
@@ -67,18 +85,6 @@ accountRoutes.post("/login", login, async (req, res) => {
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
-
-async function checkIfExists(column, value) {
-  const query = `SELECT EXISTS (SELECT 1 FROM accounts WHERE ${column} = $1)`;
-  const { rows } = await client.query(query, [value]);
-  return rows[0].exists;
-}
-
-async function checkIfQuestion(email, question) {
-  const query = `SELECT EXISTS (SELECT 1 FROM accounts WHERE question = $1 AND email = $2)`;
-  const { rows } = await client.query(query, [question, email]);
-  return rows[0].exists;
-}
 
 accountRoutes.post("/register", registerValidation, async (req, res) => {
   try {
@@ -119,7 +125,7 @@ accountRoutes.post("/register", registerValidation, async (req, res) => {
   }
 });
 
-accountRoutes.post("/check-account", async (req, res) => {
+accountRoutes.post("/check-account", checkAccount, async (req, res) => {
   try {
     const { email, question, question_answer } = req.body
 
@@ -146,7 +152,6 @@ accountRoutes.post("/check-account", async (req, res) => {
   }
 });
 
-
 accountRoutes.post("/forgot-password", forgetPassword, async (req, res) => {
   try {
     const { email, new_password } = req.body
@@ -162,6 +167,29 @@ accountRoutes.post("/forgot-password", forgetPassword, async (req, res) => {
       return responHelper(res, 404, { message: 'Email tidak ditemukan.' });
     }
   } catch (error) {
+    responHelper(res, 500, { message: 'Internal server error.' });
+  }
+});
+
+accountRoutes.post("/edit-profile", async (req, res) => {
+  try{
+    let token = req.header("token");
+    let auth = authToken(token);
+    if (auth.status !== 200) {
+      return responHelper(res, auth.status, { data: auth })
+    }
+
+    const {full_name, date_of_birth, nip, address, religion} = req.body
+
+    const {employeeId} = verifyToken(token, process.env.SECRET_KEY)
+
+    const query = `UPDATE employees SET name = $1, date_of_birth = $2, nip = $3, address = $4, religion = $5 WHERE id = $6`
+    const values = [full_name, date_of_birth, nip, address, religion, employeeId]
+
+    await client.query(query, values)
+
+    responHelper(res, 200, { message: 'Berhasil Memperbaharui profil.' });
+  }catch(error){
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
