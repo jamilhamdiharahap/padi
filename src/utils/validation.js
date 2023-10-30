@@ -63,7 +63,7 @@ const checkin = [
 ]
 
 const checkout = [
-  check('check_out_time').isISO8601(),
+  check('check_out_time').isDate(),
   check('longitude').isFloat(),
   check('latitude').isFloat(),
   check('status').isIn(['CHECKOUT']),

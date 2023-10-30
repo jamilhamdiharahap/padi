@@ -4,6 +4,7 @@ import { checkin, checkout } from "../utils/validation.js";
 import { client } from "../connection/database.js";
 import { authToken } from "../utils/auth.js";
 import { verifyToken } from "../utils/tokenVerify.js";
+import { timestampHelper } from "../helper/compareDate.js";
 
 
 const attendanceRoutes = express.Router();
@@ -33,7 +34,8 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
     const queryDate = new Date(`${year}-${month}-01`);
     const queryMonth = queryDate.getMonth() + 1;
 
-    const query = `SELECT id, checkin, checkout, work_type FROM transactions WHERE employee_id = $1 AND EXTRACT(MONTH FROM created_at) = $2 AND EXTRACT(YEAR FROM created_at) = $3`;
+    const query = `SELECT id, checkin, checkout, work_type, working_hours FROM transactions WHERE employee_id = $1 AND EXTRACT(MONTH FROM created_at) = $2
+                  AND EXTRACT(YEAR FROM created_at) = $3`;
     const values = [employeeId, queryMonth, queryDate.getFullYear()];
 
     const { rows } = await client.query(query, values);
@@ -41,7 +43,8 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
       id: item.id,
       checkin: JSON.parse(item.checkin),
       checkout: JSON.parse(item.checkout),
-      work_type: item.work_type
+      work_type: item.work_type,
+      working_hours: item.working_hours
     }));
 
     responHelper(res, 200, { data, message: `${data.length > 0 ? 'Data Ditemukan.' : 'Data Kosong'}` });
@@ -51,7 +54,7 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
 });
 
 
-attendanceRoutes.post('/checkin', checkin, async (req, res) => {
+attendanceRoutes.post('/checkin', async (req, res) => {
   try {
     let token = req.header("token");
     let auth = authToken(token);
@@ -63,6 +66,8 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
     const { employeeId } = verifyToken(token, process.env.SECRET_KEY)
 
     const { check_in_time, latitude, longitude, status, work_type } = req.body
+
+    console.log(check_in_time)
 
     const checkin = { check_in_time, latitude, longitude, status }
 
@@ -86,7 +91,7 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
   }
 });
 
-attendanceRoutes.post('/checkout', checkout, async (req, res) => {
+attendanceRoutes.post('/checkout', async (req, res) => {
   try {
     let token = req.header("token")
     let auth = authToken(token)
@@ -102,7 +107,7 @@ attendanceRoutes.post('/checkout', checkout, async (req, res) => {
 
     const { rows } = await client.query(queryCheck, [transaction_id]);
 
-    if (rows.length == 0) {
+    if (rows[0].checkin == null) {
       return responHelper(res, 400, { message: 'Silahkan checkin terlebih dahulu.' });
     }
 
@@ -110,12 +115,28 @@ attendanceRoutes.post('/checkout', checkout, async (req, res) => {
       return responHelper(res, 400, { message: 'Anda sudah checkout hari ini.' });
     }
 
-    const query = `UPDATE transactions SET checkout = $1, note = $2, activity = $3 WHERE id = $4`;
-    const values = [JSON.stringify(checkout), note, activity, transaction_id]
+    const checkInParse = JSON.parse(rows[0].checkin)
+    const checkInTime = timestampHelper(checkInParse.check_in_time)
+    const checkOutTime = timestampHelper(check_out_time)
+
+    const checkIn = new Date(`${checkInTime}`);
+    const checkOut = new Date(`${checkOutTime}`);
+
+    const timeDifference = checkOut - checkIn;
+
+    const hours = Math.floor(timeDifference / (60 * 60 * 1000));
+    const minutes = Math.floor((timeDifference % (60 * 60 * 1000)) / (60 * 1000));
+    const seconds = Math.floor((timeDifference % (60 * 1000) / 1000));
+
+
+    const query = `UPDATE transactions SET checkout = $1, note = $2, activity = $3, working_hours = $4 WHERE id = $5`;
+    const values = [JSON.stringify(checkout), note, activity, `${hours}:${minutes}:${seconds}`, transaction_id]
+
     await client.query(query, values);
 
     responHelper(res, 200, { message: 'Checkout berhasil.' });
   } catch (error) {
+    console.log(error)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
