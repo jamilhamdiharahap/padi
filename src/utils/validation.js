@@ -1,4 +1,5 @@
 import { body, validationResult, check } from 'express-validator';
+import moment from 'moment';
 
 const registerValidation = [
   body('full_name').notEmpty().withMessage('Nama lengkap tidak boleh kosong'),
@@ -48,7 +49,15 @@ const forgetPassword = [
 ];
 
 const checkin = [
-  check('check_in_time').isISO8601(),
+  check('check_in_time').custom((value, { req }) => {
+    const formattedTimestamp = moment.unix(value).format('YYYY-MM-DD HH:mm:ss');
+    if (moment(formattedTimestamp, 'YYYY-MM-DD HH:mm:ss', true).isValid()) {
+      req.formattedCheckInTime = formattedTimestamp;
+      return true;
+    } else {
+      throw new Error('Invalid timestamp format');
+    }
+  }),
   check('longitude').isFloat(),
   check('latitude').isFloat(),
   check('status').isIn(['CHECKIN']),
@@ -63,7 +72,15 @@ const checkin = [
 ]
 
 const checkout = [
-  check('check_out_time').isDate(),
+  check('check_out_time').custom((value, { req }) => {
+    const formattedTimestamp = moment.unix(value).format('YYYY-MM-DD HH:mm:ss');
+    if (moment(formattedTimestamp, 'YYYY-MM-DD HH:mm:ss', true).isValid()) {
+      req.formattedCheckInTime = formattedTimestamp;
+      return true;
+    } else {
+      throw new Error('Invalid timestamp format');
+    }
+  }),
   check('longitude').isFloat(),
   check('latitude').isFloat(),
   check('status').isIn(['CHECKOUT']),
@@ -94,7 +111,7 @@ const checkAccount = [
   },
 ];
 
-export { 
+export {
   registerValidation,
   login,
   forgetPassword,

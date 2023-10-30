@@ -53,8 +53,7 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
   }
 });
 
-
-attendanceRoutes.post('/checkin', async (req, res) => {
+attendanceRoutes.post('/checkin', checkin, async (req, res) => {
   try {
     let token = req.header("token");
     let auth = authToken(token);
@@ -91,7 +90,7 @@ attendanceRoutes.post('/checkin', async (req, res) => {
   }
 });
 
-attendanceRoutes.post('/checkout', async (req, res) => {
+attendanceRoutes.post('/checkout', checkout, async (req, res) => {
   try {
     let token = req.header("token")
     let auth = authToken(token)
