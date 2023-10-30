@@ -64,8 +64,7 @@ accountRoutes.post("/login", login, async (req, res) => {
     const token = createToken(tokenPayload);
     responHelper(res, 200, { data: user, token, message: 'Login successful' });
   } catch (error) {
-    console.log(error)
-    res.status(500).json({ error: 'An error occurred while logging in' });
+    responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
 
@@ -114,10 +113,9 @@ accountRoutes.post("/register", registerValidation, async (req, res) => {
       return responHelper(res, 400, { message: 'Registrasi Gagal.' });
     }
 
-    return responHelper(res, 200, { message: 'Registrasi berhasil.' });
+    responHelper(res, 200, { message: 'Registrasi berhasil.' });
   } catch (error) {
-    console.log(error)
-    return responHelper(res, 500, { message: 'Gagal menambahkan pengguna ke database.' });
+    responHelper(res, 500, { message: 'Gagal menambahkan pengguna ke database.' });
   }
 });
 
@@ -142,9 +140,9 @@ accountRoutes.post("/check-account", async (req, res) => {
       return responHelper(res, 400, { data: null, message: 'Jawaban tidak valid.' });
     }
 
-    return responHelper(res, 200, { data: null, message: 'Akun valid.' });
+    responHelper(res, 200, { data: null, message: 'Akun valid.' });
   } catch (error) {
-    return responHelper(res, 500, { message: 'Internal server error.' });
+    responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
 
@@ -164,10 +162,8 @@ accountRoutes.post("/forgot-password", forgetPassword, async (req, res) => {
       return responHelper(res, 404, { message: 'Email tidak ditemukan.' });
     }
   } catch (error) {
-    return responHelper(res, 500, { message: 'Internal server error.' });
+    responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
-
-
 
 export default accountRoutes;

@@ -10,9 +10,9 @@ divisionRouter.get("/division", async (req, res) => {
   const query = `SELECT id, division_name FROM divisions`;
   const { rows } = await client.query(query);
 
-  return responHelper(res, 200, { data: rows, message: 'Data berhasil ditemukan.' });
+  responHelper(res, 200, { data: rows, message: 'Data berhasil ditemukan.' });
  } catch (error) {
-  res.status(500).json({ message: error });
+  responHelper(res, 500, { message: 'Internal server error.' });
  }
 });
 
@@ -21,15 +21,15 @@ divisionRouter.get("/position/:divisionId?", async (req, res) => {
   const { divisionId } = req.params
   let query = 'SELECT id, position_name FROM positions';
 
-  if(divisionId){
-   query +=  ' WHERE division_id = $1'
+  if (divisionId) {
+   query += ' WHERE division_id = $1'
   }
 
   const { rows } = await client.query(query, divisionId ? [divisionId] : []);
 
-  return responHelper(res, 200, { data: rows, message: 'Data berhasil ditemukan.' });
+  responHelper(res, 200, { data: rows, message: 'Data berhasil ditemukan.' });
  } catch (error) {
-  res.status(500).json({ message: error });
+  responHelper(res, 500, { message: 'Internal server error.' });
  }
 });
 

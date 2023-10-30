@@ -1,7 +1,5 @@
 import pkg from "pg";
-import dotenv from 'dotenv';
-
-dotenv.config();
+import 'dotenv/config.js'
 
 const { Pool } = pkg
 

@@ -1,10 +1,8 @@
 import express from "express";
 import accountRoutes from "./accountRouter.js";
 import attendanceRoutes from "./attendanceRouter.js";
-import dotenv from "dotenv";
 import questionRouter from "./questionRouter.js";
 import divisionRouter from "./devisionRouter.js";
-dotenv.config()
 
 const routers = express.Router();
 
@@ -13,7 +11,8 @@ routers.use((req, res, next) => {
  if (!apiKey) {
    return res.status(401).json({ error: "Header API-KEY tidak ada" });
  }
- if (apiKey !== 'p@di@2023') {
+ 
+ if (apiKey !== process.env.API_KEY) {
    return res.status(401).json({ error: "INVALID API-KEY!" });
  }
  next();

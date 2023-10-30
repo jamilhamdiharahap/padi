@@ -10,7 +10,6 @@
   "author": "pzm",
   "license": "ISC",
   "dependencies": {
-    "axios": "^1.5.1",
     "crypto-js": "^4.1.1",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",

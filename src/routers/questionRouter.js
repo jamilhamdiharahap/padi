@@ -10,9 +10,9 @@ questionRouter.get("/question", async (req, res) => {
    const query = `SELECT * FROM questions`;
    const { rows } = await client.query(query);
 
-   return responHelper(res, 200, { data: rows, message: 'Data berhasil ditemukan.' });
+   responHelper(res, 200, { data: rows, message: 'Data berhasil ditemukan.' });
  } catch (error) {
-  res.status(500).json({ message: error });
+  responHelper(res, 500, { message: 'Internal server error.' });
  }
 });
 
