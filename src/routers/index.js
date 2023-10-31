@@ -1,8 +1,8 @@
 import express from "express";
-import accountRoutes from "./accountRouter.js";
-import attendanceRoutes from "./attendanceRouter.js";
-import questionRouter from "./questionRouter.js";
-import divisionRouter from "./devisionRouter.js";
+import accountRoutes from "./user.js";
+import attendanceRoutes from "./attendance.js";
+import questionRouter from "./question.js";
+import divisionRouter from "./devision.js";
 
 const routers = express.Router();
 

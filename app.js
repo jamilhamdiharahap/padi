@@ -1,5 +1,5 @@
 import express from "express";
-import routers from "./src/routers/indexRouter.js";
+import routers from "./src/routers/index.js";
 import 'dotenv/config.js'
 
 const app = express();
@@ -13,6 +13,6 @@ app.get("/api/v1", (_, res) => {
 
 app.use(routers);
 
-app.listen(3000, () => {
+app.listen(3000, () => {    
     console.log("aplication running ...")
 });

@@ -40,7 +40,7 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
 
     const { rows } = await client.query(query, values);
     const data = rows.map(item => ({
-      id: item.id,
+      transaction_id: item.id,
       checkin: JSON.parse(item.checkin),
       checkout: JSON.parse(item.checkout),
       work_type: item.work_type,

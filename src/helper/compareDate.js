@@ -1,6 +1,6 @@
-export function timestampHelper (timestamp) {
- 
- const date = new Date(timestamp * 1000);
+export function timestampHelper (value) {
+
+ const date = new Date(value * 1000);
  const year = date.getFullYear();
  const month = String(date.getMonth() + 1).padStart(2, '0');
  const day = String(date.getDate()).padStart(2, '0');
