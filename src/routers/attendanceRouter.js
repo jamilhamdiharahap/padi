@@ -66,8 +66,6 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
 
     const { check_in_time, latitude, longitude, status, work_type } = req.body
 
-    console.log(check_in_time)
-
     const checkin = { check_in_time, latitude, longitude, status }
 
     const today = new Date();
@@ -84,7 +82,10 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
 
     await client.query(query, [employeeId, JSON.stringify(checkin), work_type]);
 
-    responHelper(res, 200, { message: 'Checkin berhasil.' });
+    const queryTransaction = `SELECT id as transaction_id FROM transactions WHERE employee_id = $1 AND DATE(created_at) = $2`
+    const transactionId = await client.query(queryTransaction, [employeeId, today])
+
+    responHelper(res, 200, { data: transactionId.rows[0], message: 'Checkin berhasil.' });
   } catch (error) {
     responHelper(res, 500, { message: 'Internal server error.' });
   }
