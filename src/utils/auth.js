@@ -38,14 +38,13 @@ export function authToken(token) {
 
  const secretKey = process.env.SECRET_KEY;
 
- const today = new Date();
- const year = today.getFullYear();
- const month = today.getMonth();
- const daysInMonth = getDaysInMonth(year, month);
- const currentDate = today.getDate();
- const remainingDays = daysInMonth - currentDate;
-
- const expiresIn = 3600 * 24 * remainingDays;
+ // const today = new Date();
+ // const year = today.getFullYear();
+ // const month = today.getMonth();
+ // const daysInMonth = getDaysInMonth(year, month);
+ // const currentDate = today.getDate();
+ // const remainingDays = daysInMonth - currentDate;
+ const expiresIn = 3600 * 24 * 30;
  const compareToken =  CryptoJS.AES.decrypt(token, process.env.HASING_KEY).toString(CryptoJS.enc.Utf8)
 
  return authProtocol(compareToken, expiresIn, secretKey);
