@@ -141,5 +141,19 @@ attendanceRoutes.post('/checkout', checkout, async (req, res) => {
   }
 });
 
+attendanceRoutes.post('/delete/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const today = new Date();
+    const query = `DELETE FROM transactions WHERE id = $1 AND DATE(created_at) = $2`
+    await client.query(query, [id, today])
+
+    responHelper(res, 200, { message: 'Delete berhasil.' });
+  } catch (error) {
+    responHelper(res, 500, { message: 'Internal server error.' });
+  }
+})
+
+
 
 export default attendanceRoutes;
