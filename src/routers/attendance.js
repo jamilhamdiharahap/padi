@@ -34,13 +34,47 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
     const queryDate = new Date(`${year}-${month}-01`);
     const queryMonth = queryDate.getMonth() + 1;
 
-    const query = `SELECT id, checkin, checkout, work_type, working_hours FROM transactions WHERE employee_id = $1 AND EXTRACT(MONTH FROM created_at) = $2
-                  AND EXTRACT(YEAR FROM created_at) = $3`;
+    const query = `SELECT id, checkin, checkout, work_type, working_hours 
+      FROM transactions 
+      WHERE employee_id = $1 AND EXTRACT(MONTH FROM created_at) = $2
+      AND EXTRACT(YEAR FROM created_at) = $3`;
+      
     const values = [employeeId, queryMonth, queryDate.getFullYear()];
 
     const { rows } = await client.query(query, values);
     const data = rows.map(item => ({
       transaction_id: item.id,
+      checkin: JSON.parse(item.checkin),
+      checkout: JSON.parse(item.checkout),
+      work_type: item.work_type,
+      working_hours: item.working_hours
+    }));
+
+    responHelper(res, 200, { data, message: `${data.length > 0 ? 'Data Ditemukan.' : 'Data Kosong'}` });
+  } catch (error) {
+    responHelper(res, 500, { message: 'Internal server error.' });
+  }
+});
+
+attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
+  try {
+    let token = req.header("token");
+    let auth = authToken(token);
+
+    if (auth.status !== 200) {
+      return responHelper(res, auth.status, { data: auth })
+    }
+
+    const { transactionId } = req.params;
+
+    const query = `SELECT id, checkin, checkout, work_type, working_hours 
+      FROM transactions 
+      WHERE id = $1 `;
+
+
+    const { rows } = await client.query(query, [transactionId]);
+
+    const data = rows.map(item => ({
       checkin: JSON.parse(item.checkin),
       checkout: JSON.parse(item.checkout),
       work_type: item.work_type,
@@ -152,7 +186,7 @@ attendanceRoutes.post('/delete/:id', async (req, res) => {
   } catch (error) {
     responHelper(res, 500, { message: 'Internal server error.' });
   }
-})
+});
 
 
 

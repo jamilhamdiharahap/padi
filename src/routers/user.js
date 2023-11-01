@@ -11,13 +11,9 @@ import { responHelper } from "../helper/responHelper.js";
 import CryptoJS from "crypto-js";
 import { authToken, createToken } from "../utils/auth.js";
 import { verifyToken } from "../utils/tokenVerify.js";
+import { comparePasswords } from "../helper/comparePassword.js";
+
 const accountRoutes = express.Router();
-
-
-function comparePasswords(encryptedPassword, plainTextPassword, hashingKey) {
-  const decryptedPassword = CryptoJS.AES.decrypt(encryptedPassword, hashingKey).toString(CryptoJS.enc.Utf8);
-  return decryptedPassword === plainTextPassword;
-}
 
 async function checkIfExists(column, value) {
   const query = `SELECT EXISTS (SELECT 1 FROM accounts WHERE ${column} = $1)`;
@@ -55,7 +51,7 @@ accountRoutes.post("/login", login, async (req, res) => {
     }
 
     const employeeQuery = `
-      SELECT a.name, a.nip, a.date_of_birth, a.address, a.religion, a.id as employeeid, b.position_name, c.division_name
+      SELECT a.name, a.nip, a.date_of_birth, a.address, a.religion, a.id, b.position_name, c.division_name
       FROM employees a
       INNER JOIN positions b ON a.position_id = b.id
       INNER JOIN divisions c ON c.id = b.division_id
@@ -63,25 +59,35 @@ accountRoutes.post("/login", login, async (req, res) => {
     `;
 
     const employeeItem = await client.query(employeeQuery, [user.id]);
-    const employee = employeeItem.rows[0];
-    
+    const { id, name, nip, date_of_birth, division_name, position_name, religion, address} = employeeItem.rows[0];
+
     const tokenPayload = {
-      employeeId: employee.employeeid
+      employeeId: id
     };
 
-    user.name = employee.name;
-    user.nip = employee.nip;
-    user.date_of_birth = employee.date_of_birth;
-    user.address = employee.address;
-    user.religion = employee.religion;
-    user.position_name = employee.position_name;
-    user.division_name = employee.division_name;
+    const today = new Date();
+
+    const transactionQuery = `SELECT id AS transaction_id
+      FROM transactions WHERE employee_id = $1 AND DATE(created_at) = $2 
+    `;
+
+    const transaction = await client.query(transactionQuery, [id, today]);
+
+    user.name = name;
+    user.nip = nip;
+    user.date_of_birth = date_of_birth;
+    user.address = address;
+    user.religion = religion;
+    user.position_name = position_name;
+    user.division_name = division_name;
     user.latitude = parseFloat('-6.235064');
     user.longitude = parseFloat('106.821506');
+    user.transaction_id = transaction.rows.length > 0 ? transaction.rows[0].transaction_id : null
 
     const token = createToken(tokenPayload);
     responHelper(res, 200, { data: user, token, message: 'Login successful' });
   } catch (error) {
+    console.log(error)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
@@ -172,16 +178,16 @@ accountRoutes.post("/forgot-password", forgetPassword, async (req, res) => {
 });
 
 accountRoutes.post("/edit-profile", async (req, res) => {
-  try{
+  try {
     let token = req.header("token");
     let auth = authToken(token);
     if (auth.status !== 200) {
       return responHelper(res, auth.status, { data: auth })
     }
 
-    const {full_name, date_of_birth, nip, address, religion} = req.body
+    const { full_name, date_of_birth, nip, address, religion } = req.body
 
-    const {employeeId} = verifyToken(token, process.env.SECRET_KEY)
+    const { employeeId } = verifyToken(token, process.env.SECRET_KEY)
 
     const query = `UPDATE employees SET name = $1, date_of_birth = $2, nip = $3, address = $4, religion = $5 WHERE id = $6`
     const values = [full_name, date_of_birth, nip, address, religion, employeeId]
@@ -189,7 +195,7 @@ accountRoutes.post("/edit-profile", async (req, res) => {
     await client.query(query, values)
 
     responHelper(res, 200, { message: 'Berhasil Memperbaharui profil.' });
-  }catch(error){
+  } catch (error) {
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
