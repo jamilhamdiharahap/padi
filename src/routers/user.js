@@ -59,19 +59,27 @@ accountRoutes.post("/login", login, async (req, res) => {
     `;
 
     const employeeItem = await client.query(employeeQuery, [user.id]);
-    const { id, name, nip, date_of_birth, division_name, position_name, religion, address} = employeeItem.rows[0];
+    const { id, name, nip, date_of_birth, division_name, position_name, religion, address } = employeeItem.rows[0];
 
     const tokenPayload = {
       employeeId: id
     };
 
     const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1;
+    const day = today.getDate();
 
-    const transactionQuery = `SELECT id AS transaction_id
-      FROM transactions WHERE employee_id = $1 AND DATE(created_at) = $2 
+    const transactionQuery = `
+      SELECT id, check_out_time AS transaction_id
+      FROM transactions
+      WHERE employee_id = $1
+      AND EXTRACT(YEAR FROM check_in_time) = $2
+      AND EXTRACT(MONTH FROM check_in_time) = $3
+      AND EXTRACT(DAY FROM check_in_time) = $4
     `;
 
-    const transaction = await client.query(transactionQuery, [id, today]);
+    const transaction = await client.query(transactionQuery, [id, year, month, day]);
 
     user.name = name;
     user.nip = nip;
@@ -82,12 +90,11 @@ accountRoutes.post("/login", login, async (req, res) => {
     user.division_name = division_name;
     user.latitude = parseFloat('-6.235064');
     user.longitude = parseFloat('106.821506');
-    user.transaction_id = transaction.rows.length > 0 ? transaction.rows[0].transaction_id : null
+    user.transaction_id = transaction.rows.length > 0 && transaction.rows[0].check_out_time === null ? transaction.rows[0].transaction_id : null
 
     const token = createToken(tokenPayload);
     responHelper(res, 200, { data: user, token, message: 'Login successful' });
   } catch (error) {
-    console.log(error)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });

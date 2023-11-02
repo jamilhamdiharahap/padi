@@ -5,6 +5,7 @@ import { client } from "../connection/database.js";
 import { authToken } from "../utils/auth.js";
 import { verifyToken } from "../utils/tokenVerify.js";
 import { timestampHelper } from "../helper/compareDate.js";
+import { formatterDate } from "../helper/formatterDate.js";
 
 
 const attendanceRoutes = express.Router();
@@ -28,30 +29,50 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
     }
 
     const { employeeId } = verifyToken(token, process.env.SECRET_KEY)
-
     const { month, year } = req.params;
 
-    const queryDate = new Date(`${year}-${month}-01`);
+    const queryDate = new Date(`${year}-${month}`);
     const queryMonth = queryDate.getMonth() + 1;
 
-    const query = `SELECT id, checkin, checkout, work_type, working_hours 
+    const query = `SELECT id, checkin, checkout, work_type, working_hours, note, activity, check_in_time, check_out_time 
       FROM transactions 
-      WHERE employee_id = $1 AND EXTRACT(MONTH FROM created_at) = $2
-      AND EXTRACT(YEAR FROM created_at) = $3`;
-      
+      WHERE employee_id = $1 AND EXTRACT(MONTH FROM check_in_time) = $2
+      AND EXTRACT(YEAR FROM check_in_time) = $3`;
+
     const values = [employeeId, queryMonth, queryDate.getFullYear()];
 
     const { rows } = await client.query(query, values);
-    const data = rows.map(item => ({
-      transaction_id: item.id,
-      checkin: JSON.parse(item.checkin),
-      checkout: JSON.parse(item.checkout),
-      work_type: item.work_type,
-      working_hours: item.working_hours
-    }));
+
+    const data = rows.map(item => {
+      let checkin = {}
+      let checkout = {}
+      let checkIn = JSON.parse(item.checkin);
+      let checkOut = JSON.parse(item.checkout);
+
+      checkin.check_in_time = item.check_in_time
+      checkin.latitude = checkIn?.latitude
+      checkin.longitude = checkIn?.longitude
+      checkin.status = checkIn?.status
+
+      checkout.check_out_time = item?.check_out_time
+      checkout.latitude = checkOut?.latitude
+      checkout.longitude = checkOut?.longitude
+      checkout.status = checkOut?.status
+
+      return {
+        transaction_id: item.id,
+        checkin: checkin,
+        checkout: checkout,
+        note: item.note,
+        activity: item.activity,
+        work_type: item.work_type,
+        working_hours: item.working_hours,
+      };
+    });
 
     responHelper(res, 200, { data, message: `${data.length > 0 ? 'Data Ditemukan.' : 'Data Kosong'}` });
   } catch (error) {
+    console.log(error)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
@@ -67,19 +88,39 @@ attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
 
     const { transactionId } = req.params;
 
-    const query = `SELECT id, checkin, checkout, work_type, working_hours 
+    const query = `SELECT id, checkin, checkout, work_type, working_hours, check_in_time, check_out_time 
       FROM transactions 
       WHERE id = $1 `;
 
 
     const { rows } = await client.query(query, [transactionId]);
 
-    const data = rows.map(item => ({
-      checkin: JSON.parse(item.checkin),
-      checkout: JSON.parse(item.checkout),
-      work_type: item.work_type,
-      working_hours: item.working_hours
-    }));
+    const data = rows.map(item => {
+      let checkin = {}
+      let checkout = {}
+      let checkIn = JSON.parse(item.checkin);
+      let checkOut = JSON.parse(item.checkout);
+
+      checkin.check_in_time = item.check_in_time
+      checkin.latitude = checkIn.latitude
+      checkin.longitude = checkIn.longitude
+      checkin.status = checkIn.status
+
+      checkout.check_in_time = item.check_out_time
+      checkout.latitude = checkOut.latitude
+      checkout.longitude = checkOut.longitude
+      checkout.status = checkOut.status
+
+      return {
+        transaction_id: item.id,
+        checkin: checkin,
+        checkout: checkout,
+        note: item.note,
+        activity: item.activity,
+        work_type: item.work_type,
+        working_hours: item.working_hours,
+      };
+    });
 
     responHelper(res, 200, { data, message: `${data.length > 0 ? 'Data Ditemukan.' : 'Data Kosong'}` });
   } catch (error) {
@@ -100,24 +141,43 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
 
     const { check_in_time, latitude, longitude, status, work_type } = req.body
 
-    const checkin = { check_in_time, latitude, longitude, status }
+    const today = new Date(check_in_time * 1000);
+    const checkInTime = formatterDate(today)
+    const checkin = { latitude, longitude, status }
 
-    const today = new Date();
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
 
-    const queryCheck = `SELECT * FROM transactions WHERE employee_id = $1 AND DATE(created_at) = $2`
-    const { rows } = await client.query(queryCheck, [employeeId, today])
+    const queryCheck = `SELECT id AS transaction_id
+      FROM transactions
+      WHERE employee_id = $1
+      AND EXTRACT(YEAR FROM check_in_time) = $2
+      AND EXTRACT(MONTH FROM check_in_time) = $3
+      AND EXTRACT(DAY FROM check_in_time) = $4
+    `;
+
+    const { rows } = await client.query(queryCheck, [employeeId, year, month, day]);
 
     if (rows.length > 0) {
       return responHelper(res, 400, { message: 'Anda sudah checkin hari ini.' });
     }
 
-    const query = `INSERT INTO transactions (employee_id, checkin, work_type)
-    VALUES ($1, $2, $3)`;
+    const query = `INSERT INTO transactions 
+    (employee_id, checkin, check_in_time , work_type)
+    VALUES ($1, $2, $3, $4)`;
 
-    await client.query(query, [employeeId, JSON.stringify(checkin), work_type]);
+    await client.query(query, [employeeId, JSON.stringify(checkin), checkInTime, work_type]);
 
-    const queryTransaction = `SELECT id as transaction_id FROM transactions WHERE employee_id = $1 AND DATE(created_at) = $2`
-    const transactionId = await client.query(queryTransaction, [employeeId, today])
+    const queryTransaction = `SELECT id as transaction_id FROM transactions 
+      WHERE employee_id = $1
+      AND EXTRACT(YEAR FROM check_in_time) = $2
+      AND EXTRACT(MONTH FROM check_in_time) = $3
+      AND EXTRACT(DAY FROM check_in_time) = $4
+    `;
+
+    const transactionId = await client.query(queryTransaction, [employeeId, year, month, day])
 
     responHelper(res, 200, { data: transactionId.rows[0], message: 'Checkin berhasil.' });
   } catch (error) {
@@ -135,6 +195,10 @@ attendanceRoutes.post('/checkout', checkout, async (req, res) => {
     }
 
     const { note, activity, check_out_time, latitude, longitude, status, transaction_id } = req.body
+
+    const today = new Date(check_out_time * 1000);
+    const timestamp = formatterDate(today);
+
     const checkout = { check_out_time, latitude, longitude, status }
 
     const queryCheck = `SELECT * FROM transactions WHERE id = $1`;
@@ -149,22 +213,27 @@ attendanceRoutes.post('/checkout', checkout, async (req, res) => {
       return responHelper(res, 400, { message: 'Anda sudah checkout hari ini.' });
     }
 
-    const checkInParse = JSON.parse(rows[0].checkin)
-    const checkInTime = timestampHelper(checkInParse.check_in_time)
-    const checkOutTime = timestampHelper(check_out_time)
+    // const checkInTime = rows[0].check_in_time
+    // const checkOutTime = timestamp  
+    // console.log(checkInTime)
+    // console.log(checkOutTime)
+    // const checkIn = new Date(`${checkInTime}`);
+    // const checkOut = new Date(`${checkOutTime}`);
+    // console.log(checkIn)
+    // console.log(checkOut)
 
-    const checkIn = new Date(`${checkInTime}`);
-    const checkOut = new Date(`${checkOutTime}`);
+    // const timeDifference = checkOut - checkIn;
 
-    const timeDifference = checkOut - checkIn;
+    // console.log(timeDifference)
 
-    const hours = Math.floor(timeDifference / (60 * 60 * 1000));
-    const minutes = Math.floor((timeDifference % (60 * 60 * 1000)) / (60 * 1000));
-    const seconds = Math.floor((timeDifference % (60 * 1000) / 1000));
+    // const hours = Math.floor(timeDifference / (60 * 60 * 1000));
+    // const minutes = Math.floor((timeDifference % (60 * 60 * 1000)) / (60 * 1000));
+    // const seconds = Math.floor((timeDifference % (60 * 1000) / 1000));
 
 
-    const query = `UPDATE transactions SET checkout = $1, note = $2, activity = $3, working_hours = $4 WHERE id = $5`;
-    const values = [JSON.stringify(checkout), note, activity, `${hours}:${minutes}:${seconds}`, transaction_id]
+    const query = `UPDATE transactions SET checkout = $1, note = $2, activity = $3, working_hours = $4 check_out_time = $5 WHERE id = $6`;
+    // const values = [JSON.stringify(checkout), note, activity, timestamp, transaction_id]
+    const values = [JSON.stringify(checkout), note, activity, `${'08'}:${'00'}:${'00'}`, timestamp, transaction_id]
 
     await client.query(query, values);
 
