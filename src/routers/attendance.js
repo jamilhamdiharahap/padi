@@ -141,7 +141,6 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
     const { employeeId } = verifyToken(token, process.env.SECRET_KEY)
 
     const { check_in_time, latitude, longitude, status, work_type } = req.body
-    console.log(check_in_time)
 
     const today = new Date(check_in_time * 1000);
     const checkInTime = formatterDate(today)
@@ -151,6 +150,8 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
     const day = date.getDate();
+
+    const params = new Date(checkInTime)
 
     const queryCheck = `SELECT id AS transaction_id
       FROM transactions
@@ -178,11 +179,11 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
       AND EXTRACT(MONTH FROM check_in_time) = $3
       AND EXTRACT(DAY FROM check_in_time) = $4
     `;
-
-    const transactionId = await client.query(queryTransaction, [employeeId, year, month, day])
+    const transactionId = await client.query(queryTransaction, [employeeId, params.getFullYear(), params.getMonth() + 1, params.getDate()])
 
     responHelper(res, 200, { data: transactionId.rows[0], message: 'Checkin berhasil.' });
   } catch (error) {
+    console.log(error)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
