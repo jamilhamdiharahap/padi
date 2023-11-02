@@ -36,7 +36,8 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
 
     const query = `SELECT id, checkin, checkout, work_type, working_hours, note, activity, check_in_time, check_out_time 
       FROM transactions 
-      WHERE employee_id = $1 AND EXTRACT(MONTH FROM check_in_time) = $2
+      WHERE employee_id = $1
+      AND EXTRACT(MONTH FROM check_in_time) = $2
       AND EXTRACT(YEAR FROM check_in_time) = $3`;
 
     const values = [employeeId, queryMonth, queryDate.getFullYear()];
@@ -140,6 +141,7 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
     const { employeeId } = verifyToken(token, process.env.SECRET_KEY)
 
     const { check_in_time, latitude, longitude, status, work_type } = req.body
+    console.log(check_in_time)
 
     const today = new Date(check_in_time * 1000);
     const checkInTime = formatterDate(today)
@@ -199,7 +201,7 @@ attendanceRoutes.post('/checkout', checkout, async (req, res) => {
     const today = new Date(check_out_time * 1000);
     const timestamp = formatterDate(today);
 
-    const checkout = { check_out_time, latitude, longitude, status }
+    const checkout = { latitude, longitude, status }
 
     const queryCheck = `SELECT * FROM transactions WHERE id = $1`;
 
@@ -231,7 +233,7 @@ attendanceRoutes.post('/checkout', checkout, async (req, res) => {
     // const seconds = Math.floor((timeDifference % (60 * 1000) / 1000));
 
 
-    const query = `UPDATE transactions SET checkout = $1, note = $2, activity = $3, working_hours = $4 check_out_time = $5 WHERE id = $6`;
+    const query = `UPDATE transactions SET checkout = $1, note = $2, activity = $3, working_hours = $4, check_out_time = $5 WHERE id = $6`;
     // const values = [JSON.stringify(checkout), note, activity, timestamp, transaction_id]
     const values = [JSON.stringify(checkout), note, activity, `${'08'}:${'00'}:${'00'}`, timestamp, transaction_id]
 
