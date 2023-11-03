@@ -50,12 +50,12 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
       let checkIn = JSON.parse(item.checkin);
       let checkOut = JSON.parse(item.checkout);
 
-      checkin.check_in_time = item.check_in_time
+      checkin.check_in_time = formatterDate(item.check_in_time)
       checkin.latitude = checkIn?.latitude
       checkin.longitude = checkIn?.longitude
       checkin.status = checkIn?.status
 
-      checkout.check_out_time = item?.check_out_time
+      checkout.check_out_time = formatterDate(item?.check_out_time)
       checkout.latitude = checkOut?.latitude
       checkout.longitude = checkOut?.longitude
       checkout.status = checkOut?.status
@@ -89,7 +89,7 @@ attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
 
     const { transactionId } = req.params;
 
-    const query = `SELECT id, checkin, checkout, work_type, working_hours, check_in_time, check_out_time 
+    const query = `SELECT id, checkin, checkout, work_type, working_hours, note, activity, check_in_time, check_out_time 
       FROM transactions 
       WHERE id = $1 `;
 
@@ -102,12 +102,12 @@ attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
       let checkIn = JSON.parse(item.checkin);
       let checkOut = JSON.parse(item.checkout);
 
-      checkin.check_in_time = item.check_in_time
+      checkin.check_in_time = formatterDate(item.check_in_time)
       checkin.latitude = checkIn.latitude
       checkin.longitude = checkIn.longitude
       checkin.status = checkIn.status
 
-      checkout.check_in_time = item.check_out_time
+      checkout.check_out_time = formatterDate(item.check_out_time)
       checkout.latitude = checkOut.latitude
       checkout.longitude = checkOut.longitude
       checkout.status = checkOut.status
@@ -188,6 +188,21 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
   }
 });
 
+function calculateWorkingHours(startTimestamp, endTimestamp) {
+  const selisihWaktu = endTimestamp - startTimestamp;
+  const jam = Math.floor(selisihWaktu / 3600000);
+  const sisaMilidetik = selisihWaktu % 3600000;
+  const menit = Math.floor(sisaMilidetik / 60000);
+  const detik = (sisaMilidetik % 60000) / 1000;
+
+  const jamFormatted = jam.toString().padStart(2, '0');
+  const menitFormatted = menit.toString().padStart(2, '0');
+  const detikFormatted = detik.toString().padStart(2, '0');
+
+  // return `${jamFormatted}:${menitFormatted}:${detikFormatted}`;
+  return `${jamFormatted}:${menitFormatted}`;
+}
+
 attendanceRoutes.post('/checkout', checkout, async (req, res) => {
   try {
     let token = req.header("token")
@@ -207,7 +222,6 @@ attendanceRoutes.post('/checkout', checkout, async (req, res) => {
     const queryCheck = `SELECT * FROM transactions WHERE id = $1`;
 
     const { rows } = await client.query(queryCheck, [transaction_id]);
-
     if (rows[0].checkin == null) {
       return responHelper(res, 400, { message: 'Silahkan checkin terlebih dahulu.' });
     }
@@ -216,27 +230,20 @@ attendanceRoutes.post('/checkout', checkout, async (req, res) => {
       return responHelper(res, 400, { message: 'Anda sudah checkout hari ini.' });
     }
 
-    // const checkInTime = rows[0].check_in_time
-    // const checkOutTime = timestamp  
-    // console.log(checkInTime)
-    // console.log(checkOutTime)
-    // const checkIn = new Date(`${checkInTime}`);
-    // const checkOut = new Date(`${checkOutTime}`);
-    // console.log(checkIn)
-    // console.log(checkOut)
-
-    // const timeDifference = checkOut - checkIn;
-
-    // console.log(timeDifference)
-
-    // const hours = Math.floor(timeDifference / (60 * 60 * 1000));
-    // const minutes = Math.floor((timeDifference % (60 * 60 * 1000)) / (60 * 1000));
-    // const seconds = Math.floor((timeDifference % (60 * 1000) / 1000));
 
 
-    const query = `UPDATE transactions SET checkout = $1, note = $2, activity = $3, working_hours = $4, check_out_time = $5 WHERE id = $6`;
-    // const values = [JSON.stringify(checkout), note, activity, timestamp, transaction_id]
-    const values = [JSON.stringify(checkout), note, activity, `${'08'}:${'00'}:${'00'}`, timestamp, transaction_id]
+    const checkInTime = formatterDate(rows[0].check_in_time);
+
+    const startTimestamp = new Date(`${checkInTime}`).getTime();
+    const endTimestamp = new Date(`${timestamp}`).getTime();
+
+    const workingHours = calculateWorkingHours(startTimestamp, endTimestamp);
+
+    const query = `UPDATE transactions 
+      SET checkout = $1, note = $2, activity = $3, working_hours = $4, check_out_time = $5
+      WHERE id = $6
+    `;
+    const values = [JSON.stringify(checkout), note, activity, workingHours, timestamp, transaction_id]
 
     await client.query(query, values);
 
