@@ -54,8 +54,9 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
       checkin.latitude = checkIn?.latitude
       checkin.longitude = checkIn?.longitude
       checkin.status = checkIn?.status
-
-      checkout.check_out_time = checkout.check_out_time != null ? formatterDate(item?.check_out_time) : null
+      if(item.check_out_time !== null){
+        checkout.check_out_time = formatterDate(item.check_out_time)
+      }
       checkout.latitude = checkOut?.latitude
       checkout.longitude = checkOut?.longitude
       checkout.status = checkOut?.status
