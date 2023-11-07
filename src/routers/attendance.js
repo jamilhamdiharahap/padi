@@ -4,8 +4,8 @@ import { checkin, checkout } from "../utils/validation.js";
 import { client } from "../connection/database.js";
 import { authToken } from "../utils/auth.js";
 import { verifyToken } from "../utils/tokenVerify.js";
-import { timestampHelper } from "../helper/compareDate.js";
 import { formatterDate } from "../helper/formatterDate.js";
+import axios from "axios";
 
 
 const attendanceRoutes = express.Router();
@@ -17,6 +17,101 @@ attendanceRoutes.use((req, res, next) => {
     return res.status(401).json({ error: "Header 'Token' tidak ada." });
   }
   next();
+});
+
+function parseTimeToMinutes(timeString) {
+  if (timeString === null) return 0;
+  const [hours, minutes] = timeString.split(":");
+  return parseInt(hours, 10) * 60 + parseInt(minutes, 10);
+}
+
+
+attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
+  let token = req.header("token");
+  let auth = authToken(token);
+
+  if (auth.status !== 200) {
+    return responHelper(res, auth.status, { data: auth })
+  }
+  try {
+    const { month, year } = req.params;
+    const { employeeId } = verifyToken(token, process.env.SECRET_KEY)
+    if (!month || !year) {
+      return res.status(400).json({ message: 'Both month and year are required query parameters' });
+    }
+
+    const response = await axios.get(`https://api-harilibur.vercel.app/api?month=${month}&year=${year}`);
+
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0);
+
+    const datesInMonth = [];
+
+    for (let date = firstDay; date <= lastDay; date.setDate(date.getDate() + 1)) {
+      const dayOfWeek = date.toLocaleString('id-ID', { weekday: 'long' });
+      const isDayOff = (dayOfWeek === 'Sabtu' || dayOfWeek === 'Minggu');
+      datesInMonth.push({
+        date_detail: new Date(date).toISOString().split('T')[0],
+        date: new Date(date).toISOString().split('T')[0].slice(8, 10),
+        month: new Date(date).toISOString().split('T')[0].slice(5, 7),
+        year: new Date(date).toISOString().split('T')[0].slice(0, 4),
+        day: dayOfWeek,
+        day_off: isDayOff,
+      })
+    }
+
+    datesInMonth.forEach(item => {
+      response.data.forEach(day => {
+        const holiday = day.holiday_date.slice(8, 10)
+        if (item.day == holiday) {
+          if (day.is_national_holiday) {
+            item.holiday = day.holiday_name
+            item.is_national_holiday = true
+          } else {
+            item.holiday = null
+            item.is_national_holiday = false
+          }
+        } else {
+          item.holiday = null
+          item.is_national_holiday = false
+        }
+      })
+    })
+
+    let totalWorking = 0;
+    datesInMonth.forEach(item => {
+      if (item.day === 'Sabtu' || item.day === 'Minggu' || item.is_national_holiday) {
+        totalWorking++;
+      }
+    })
+
+    const query = `SELECT working_hours FROM transactions WHERE employee_id = $1
+        AND EXTRACT(MONTH FROM check_in_time) = $2
+        AND EXTRACT(YEAR FROM check_in_time) = $3`
+
+    const { rows } = await client.query(query, [employeeId, month, year])
+
+    const totalMinutes = rows.reduce((acc, obj) => {
+      return acc + parseTimeToMinutes(obj.working_hours);
+    }, 0);
+
+    const totalHours = Math.floor(totalMinutes / 60);
+    const totalMinutesRemaining = totalMinutes % 60;
+    const totalWorkingHours = `${totalHours.toString().padStart(2, '0')}:${totalMinutesRemaining.toString().padStart(2, '0')}`;
+
+    responHelper(res, 200, {
+      data: {
+        total_working_day: (datesInMonth.length - totalWorking) + "",
+        employee_working_day: rows.length+"",
+        standar_working_hour: (datesInMonth.length - totalWorking) * 8 + "",
+        employee_working_hours: totalWorkingHours
+      },
+      message: "Success"
+    })
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ message: error });
+  }
 });
 
 attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
@@ -54,7 +149,7 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
       checkin.latitude = checkIn?.latitude
       checkin.longitude = checkIn?.longitude
       checkin.status = checkIn?.status
-      if(item.check_out_time !== null){
+      if (item.check_out_time !== null) {
         checkout.check_out_time = formatterDate(item.check_out_time)
       }
       checkout.latitude = checkOut?.latitude
@@ -263,7 +358,6 @@ attendanceRoutes.post('/delete/:id', async (req, res) => {
 
     responHelper(res, 200, { message: 'Delete berhasil.' });
   } catch (error) {
-    console.log(error.message)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
