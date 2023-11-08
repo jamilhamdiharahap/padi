@@ -71,7 +71,7 @@ accountRoutes.post("/login", login, async (req, res) => {
     const day = today.getDate();
 
     const transactionQuery = `
-      SELECT id, check_out_time AS transaction_id
+      SELECT id, check_in_time, check_out_time
       FROM transactions
       WHERE employee_id = $1
       AND EXTRACT(YEAR FROM check_in_time) = $2
@@ -80,7 +80,6 @@ accountRoutes.post("/login", login, async (req, res) => {
     `;
 
     const transaction = await client.query(transactionQuery, [id, year, month, day]);
-
     user.name = name;
     user.nip = nip;
     user.date_of_birth = date_of_birth;
@@ -90,7 +89,11 @@ accountRoutes.post("/login", login, async (req, res) => {
     user.division_name = division_name;
     user.latitude = parseFloat('-6.235064');
     user.longitude = parseFloat('106.821506');
-    user.transaction_id = transaction.rows.length > 0 && transaction.rows[0].check_out_time === null ? transaction.rows[0].transaction_id : null
+    if(transaction.rows.length > 0){
+      user.transaction_id = transaction.rows[0].check_in_time !== null && transaction.rows[0].check_out_time === null ? transaction.rows[0].id : null
+    }else{
+      user.transaction_id = null
+    }
 
     const token = createToken(tokenPayload);
     responHelper(res, 200, { data: user, token, message: 'Login successful' });
