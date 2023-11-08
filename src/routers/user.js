@@ -32,7 +32,7 @@ accountRoutes.post("/login", login, async (req, res) => {
     const { email, password } = req.body;
 
     const accountQuery = `
-      SELECT a.id, a.email, a.password, a.access_code, a.reminder, b.status 
+      SELECT a.id, a.email, a.password, a.access_code, a.device_access, a.reminder, b.status 
       FROM accounts a
       INNER JOIN roles b ON a.role_id = b.id
       WHERE a.email = $1
@@ -48,6 +48,13 @@ accountRoutes.post("/login", login, async (req, res) => {
 
     if (!comparePasswords(user.password, password, process.env.HASING_KEY)) {
       return responHelper(res, 400, { data: null, message: 'Invalid password' });
+    }
+
+    if(user.device_access) {
+      return responHelper(res, 400, { data: null, message: 'Akun anda login di device lain.' });
+    }else{
+      const deviceQuery = `UPDATE accounts SET device_access = $1 WHERE id = $2`
+      await client.query(deviceQuery, [true, user.id])
     }
 
     const employeeQuery = `
@@ -89,6 +96,7 @@ accountRoutes.post("/login", login, async (req, res) => {
     user.division_name = division_name;
     user.latitude = parseFloat('-6.235064');
     user.longitude = parseFloat('106.821506');
+
     if(transaction.rows.length > 0){
       user.transaction_id = transaction.rows[0].check_in_time !== null && transaction.rows[0].check_out_time === null ? transaction.rows[0].id : null
     }else{
@@ -98,6 +106,7 @@ accountRoutes.post("/login", login, async (req, res) => {
     const token = createToken(tokenPayload);
     responHelper(res, 200, { data: user, token, message: 'Login successful' });
   } catch (error) {
+    console.log(error)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });

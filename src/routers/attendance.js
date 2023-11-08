@@ -195,16 +195,17 @@ attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
       let checkout = {}
       let checkIn = JSON.parse(item.checkin);
       let checkOut = JSON.parse(item.checkout);
-
+      console.log(checkOut)
       checkin.check_in_time = formatterDate(item.check_in_time)
       checkin.latitude = checkIn.latitude
       checkin.longitude = checkIn.longitude
       checkin.status = checkIn.status
-
-      checkout.check_out_time = formatterDate(item.check_out_time)
-      checkout.latitude = checkOut.latitude
-      checkout.longitude = checkOut.longitude
-      checkout.status = checkOut.status
+      if(checkOut !== null) {
+        checkout.check_out_time = formatterDate(item.check_out_time)
+        checkout.latitude = checkOut.latitude
+        checkout.longitude = checkOut.longitude
+        checkout.status = checkOut.status
+      }
 
       return {
         transaction_id: item.id,
@@ -221,6 +222,7 @@ attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
 
     responHelper(res, 200, { data, message: `${data.length > 0 ? 'Data Ditemukan.' : 'Data Kosong'}` });
   } catch (error) {
+    console.log(error)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
