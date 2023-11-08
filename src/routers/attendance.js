@@ -185,9 +185,7 @@ attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
 
     const { transactionId } = req.params;
 
-    const query = `SELECT id, checkin, checkout, work_type, working_hours, note, activity, check_in_time, check_out_time 
-      FROM transactions 
-      WHERE id = $1 `;
+    const query = `SELECT id, checkin, checkout, work_type, working_hours, note, activity, check_in_time, check_out_time FROM transactions WHERE id = $1`;
 
 
     const { rows } = await client.query(query, [transactionId]);
@@ -216,6 +214,8 @@ attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
         activity: item.activity,
         work_type: item.work_type,
         working_hours: item.working_hours,
+        schedule_in:`${checkin.check_in_time.slice(0,10)} 01:00:00`,
+        schedule_out:`${checkin.check_in_time.slice(0,10)} 10:00:00`
       };
     });
 
