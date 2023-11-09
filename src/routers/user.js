@@ -50,9 +50,9 @@ accountRoutes.post("/login", login, async (req, res) => {
       return responHelper(res, 400, { data: null, message: 'Invalid password' });
     }
 
-    if(user.device_access) {
+    if (user.device_access) {
       return responHelper(res, 400, { data: null, message: 'Akun anda login di device lain.' });
-    }else{
+    } else {
       const deviceQuery = `UPDATE accounts SET device_access = $1 WHERE id = $2`
       await client.query(deviceQuery, [true, user.id])
     }
@@ -97,9 +97,9 @@ accountRoutes.post("/login", login, async (req, res) => {
     user.latitude = parseFloat('-6.235064');
     user.longitude = parseFloat('106.821506');
 
-    if(transaction.rows.length > 0){
+    if (transaction.rows.length > 0) {
       user.transaction_id = transaction.rows[0].check_in_time !== null && transaction.rows[0].check_out_time === null ? transaction.rows[0].id : null
-    }else{
+    } else {
       user.transaction_id = null
     }
 
@@ -123,10 +123,10 @@ accountRoutes.post("/register", registerValidation, async (req, res) => {
 
     const hashPassword = CryptoJS.AES.encrypt(password, process.env.HASING_KEY).toString();
 
-    const query = `INSERT INTO accounts (access_code, reminder, role_id, password, email, question)
-                VALUES ($1, $2, $3, $4, $5, $6)`;
+    const query = `INSERT INTO accounts (access_code, reminder, role_id, password, email, question, device_access)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)`;
 
-    const check = await client.query(query, [generateRandomNumber(), reminder.toUpperCase(), "baa2f5ff-3736-446b-8276-54d760808430", hashPassword, email, question]);
+    const check = await client.query(query, [generateRandomNumber(), reminder.toUpperCase(), "baa2f5ff-3736-446b-8276-54d760808430", hashPassword, email, question, false]);
     if (check.command === 'INSERT') {
       const queryAccount = `SELECT id FROM accounts WHERE email = $1`;
       const { rows } = await client.query(queryAccount, [email])
@@ -218,5 +218,24 @@ accountRoutes.post("/edit-profile", async (req, res) => {
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
+
+accountRoutes.post("/logout", async (req, res) => {
+  let token = req.header("token");
+  let auth = authToken(token);
+
+  if (auth.status !== 200) {
+    return responHelper(res, auth.status, { data: auth })
+  } else {
+    try {
+      const { employeeId } = verifyToken(token, process.env.SECRET_KEY)
+      const query = `UPDATE accounts SET device_access = $1 WHERE id = (SELECT account_id FROM employees WHERE id = $2)`
+      await client.query(query, [false, employeeId])
+      responHelper(res, 200, { data: null, message: 'Logout successful' });
+    } catch (error) {
+      responHelper(res, 500, { message: 'Internal server error.' })
+    }
+  }
+
+})
 
 export default accountRoutes;

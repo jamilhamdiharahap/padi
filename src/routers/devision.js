@@ -18,11 +18,11 @@ divisionRouter.get("/division", async (req, res) => {
 
 divisionRouter.get("/position/:divisionId?", async (req, res) => {
  try {
-  const { divisionId } = req.params
+  const { divisionId } = req.params;
   let query = 'SELECT id, position_name FROM positions';
 
   if (divisionId) {
-   query += ' WHERE division_id = $1'
+   query += ' WHERE division_id = $1';
   }
 
   const { rows } = await client.query(query, divisionId ? [divisionId] : []);

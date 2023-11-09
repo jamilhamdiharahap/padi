@@ -1,12 +1,11 @@
 import express from "express";
+import axios from "axios";
 import { responHelper } from "../helper/responHelper.js";
 import { checkin, checkout } from "../utils/validation.js";
 import { client } from "../connection/database.js";
 import { authToken } from "../utils/auth.js";
 import { verifyToken } from "../utils/tokenVerify.js";
 import { formatterDate } from "../helper/formatterDate.js";
-import axios from "axios";
-
 
 const attendanceRoutes = express.Router();
 
@@ -25,6 +24,20 @@ function parseTimeToMinutes(timeString) {
   return parseInt(hours, 10) * 60 + parseInt(minutes, 10);
 }
 
+function calculateWorkingHours(startTimestamp, endTimestamp) {
+  const selisihWaktu = endTimestamp - startTimestamp;
+  const jam = Math.floor(selisihWaktu / 3600000);
+  const sisaMilidetik = selisihWaktu % 3600000;
+  const menit = Math.floor(sisaMilidetik / 60000);
+  const detik = (sisaMilidetik % 60000) / 1000;
+
+  const jamFormatted = jam.toString().padStart(2, '0');
+  const menitFormatted = menit.toString().padStart(2, '0');
+  const detikFormatted = detik.toString().padStart(2, '0');
+
+  // return `${jamFormatted}:${menitFormatted}:${detikFormatted}`;
+  return `${jamFormatted}:${menitFormatted}`;
+}
 
 attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
   let token = req.header("token");
@@ -102,7 +115,7 @@ attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
     responHelper(res, 200, {
       data: {
         total_working_day: (datesInMonth.length - totalWorking) + "",
-        employee_working_day: rows.length+"",
+        employee_working_day: rows.length + "",
         standar_working_hour: (datesInMonth.length - totalWorking) * 8 + "",
         employee_working_hours: totalWorkingHours
       },
@@ -169,7 +182,6 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
 
     responHelper(res, 200, { data, message: `${data.length > 0 ? 'Data Ditemukan.' : 'Data Kosong'}` });
   } catch (error) {
-    console.log(error)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
@@ -200,7 +212,7 @@ attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
       checkin.latitude = checkIn.latitude
       checkin.longitude = checkIn.longitude
       checkin.status = checkIn.status
-      if(checkOut !== null) {
+      if (checkOut !== null) {
         checkout.check_out_time = formatterDate(item.check_out_time)
         checkout.latitude = checkOut.latitude
         checkout.longitude = checkOut.longitude
@@ -215,8 +227,8 @@ attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
         activity: item.activity,
         work_type: item.work_type,
         working_hours: item.working_hours,
-        schedule_in:`${checkin.check_in_time.slice(0,10)} 01:00:00`,
-        schedule_out:`${checkin.check_in_time.slice(0,10)} 10:00:00`
+        schedule_in: `${checkin.check_in_time.slice(0, 10)} 01:00:00`,
+        schedule_out: `${checkin.check_in_time.slice(0, 10)} 10:00:00`
       };
     });
 
@@ -265,11 +277,9 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
       return responHelper(res, 400, { message: 'Anda sudah checkin hari ini.' });
     }
 
-    const query = `INSERT INTO transactions 
-    (employee_id, checkin, check_in_time , work_type)
-    VALUES ($1, $2, $3, $4)`;
+    const query = `UPDATE transactions SET checkin = $1, check_in_time = $2 , work_type = $3 WHERE`;
 
-    await client.query(query, [employeeId, JSON.stringify(checkin), checkInTime, work_type]);
+    await client.query(query, [JSON.stringify(checkin), checkInTime, work_type]);
 
     const queryTransaction = `SELECT id as transaction_id FROM transactions 
       WHERE employee_id = $1
@@ -281,25 +291,9 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
 
     responHelper(res, 200, { data: transactionId.rows[0], message: 'Checkin berhasil.' });
   } catch (error) {
-    console.log(error)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
-
-function calculateWorkingHours(startTimestamp, endTimestamp) {
-  const selisihWaktu = endTimestamp - startTimestamp;
-  const jam = Math.floor(selisihWaktu / 3600000);
-  const sisaMilidetik = selisihWaktu % 3600000;
-  const menit = Math.floor(sisaMilidetik / 60000);
-  const detik = (sisaMilidetik % 60000) / 1000;
-
-  const jamFormatted = jam.toString().padStart(2, '0');
-  const menitFormatted = menit.toString().padStart(2, '0');
-  const detikFormatted = detik.toString().padStart(2, '0');
-
-  // return `${jamFormatted}:${menitFormatted}:${detikFormatted}`;
-  return `${jamFormatted}:${menitFormatted}`;
-}
 
 attendanceRoutes.post('/checkout', checkout, async (req, res) => {
   try {
@@ -363,7 +357,5 @@ attendanceRoutes.post('/delete/:id', async (req, res) => {
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
-
-
 
 export default attendanceRoutes;
