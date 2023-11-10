@@ -160,8 +160,8 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
     const query = `SELECT id, checkin, checkout, work_type, working_hours, note, activity, check_in_time, check_out_time 
       FROM transactions 
       WHERE employee_id = $1
-      AND EXTRACT(MONTH FROM check_in_time) = $2
-      AND EXTRACT(YEAR FROM check_in_time) = $3`;
+      AND EXTRACT(MONTH FROM created_at) = $2
+      AND EXTRACT(YEAR FROM created_at) = $3`;
 
     const values = [employeeId, queryMonth, queryDate.getFullYear()];
 
@@ -172,8 +172,9 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
       let checkout = {}
       let checkIn = JSON.parse(item.checkin);
       let checkOut = JSON.parse(item.checkout);
-
-      checkin.check_in_time = formatterDate(item.check_in_time)
+      if (item.check_in_time !== null) {
+        checkin.check_in_time = formatterDate(item.check_in_time)
+      }
       checkin.latitude = checkIn?.latitude
       checkin.longitude = checkIn?.longitude
       checkin.status = checkIn?.status
