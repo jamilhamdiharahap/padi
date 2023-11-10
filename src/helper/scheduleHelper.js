@@ -10,6 +10,7 @@ export async function scheduleTransaction() {
    await client.query(query, [item.id])
   })
  } catch (error) {
+  console.log(error)
   console.log("Error Schedule!")
  }
 }

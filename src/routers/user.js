@@ -19,13 +19,13 @@ async function checkIfExists(column, value) {
   const query = `SELECT EXISTS (SELECT 1 FROM accounts WHERE ${column} = $1)`;
   const { rows } = await client.query(query, [value]);
   return rows[0].exists;
-}
+};
 
 async function checkIfQuestion(email, question) {
   const query = `SELECT EXISTS (SELECT 1 FROM accounts WHERE question = $1 AND email = $2)`;
   const { rows } = await client.query(query, [question, email]);
   return rows[0].exists;
-}
+};
 
 accountRoutes.post("/login", login, async (req, res) => {
   try {
@@ -236,6 +236,6 @@ accountRoutes.post("/logout", async (req, res) => {
     }
   }
 
-})
+});
 
 export default accountRoutes;

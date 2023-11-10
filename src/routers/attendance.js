@@ -22,7 +22,7 @@ function parseTimeToMinutes(timeString) {
   if (timeString === null) return 0;
   const [hours, minutes] = timeString.split(":");
   return parseInt(hours, 10) * 60 + parseInt(minutes, 10);
-}
+};
 
 function calculateWorkingHours(startTimestamp, endTimestamp) {
   const selisihWaktu = endTimestamp - startTimestamp;
@@ -37,7 +37,7 @@ function calculateWorkingHours(startTimestamp, endTimestamp) {
 
   // return `${jamFormatted}:${menitFormatted}:${detikFormatted}`;
   return `${jamFormatted}:${menitFormatted}`;
-}
+};
 
 attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
   let token = req.header("token");
@@ -98,7 +98,7 @@ attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
       }
     })
 
-    const query = `SELECT working_hours FROM transactions WHERE employee_id = $1
+    const query = `SELECT working_hours, check_in_time, work_type FROM transactions WHERE employee_id = $1
         AND EXTRACT(MONTH FROM check_in_time) = $2
         AND EXTRACT(YEAR FROM check_in_time) = $3`
 
@@ -108,22 +108,36 @@ attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
       return acc + parseTimeToMinutes(obj.working_hours);
     }, 0);
 
+    const wfh = rows.filter(item => item.work_type === 'WFH')
+    const wfo = rows.filter(item => item.work_type === 'WFO')
+    const late = rows.filter(item => {
+      const checkInTime = new Date(formatterDate(item.check_in_time));
+      return checkInTime.getHours() >= 8 && checkInTime.getMinutes() >= 30;
+    }).length;
+    const notPresent = rows.filter(item => {
+      return item.check_in_time === null;
+    }).length;
+
     const totalHours = Math.floor(totalMinutes / 60);
     const totalMinutesRemaining = totalMinutes % 60;
     const totalWorkingHours = `${totalHours.toString().padStart(2, '0')}:${totalMinutesRemaining.toString().padStart(2, '0')}`;
 
     responHelper(res, 200, {
       data: {
-        total_working_day: (datesInMonth.length - totalWorking) + "",
-        employee_working_day: rows.length + "",
-        standar_working_hour: (datesInMonth.length - totalWorking) * 8 + "",
-        employee_working_hours: totalWorkingHours
+        total_working_day: (datesInMonth.length - totalWorking).toString(),
+        employee_working_day: rows.length.toString(),
+        standard_working_hour: ((datesInMonth.length - totalWorking) * 8).toString(),
+        employee_working_hours: totalWorkingHours,
+        not_present: notPresent.toString(), 
+        wfh: wfh.length.toString(),
+        wfo: wfo.length.toString(),
+        late: late.toString()
       },
       message: "Success"
     })
   } catch (error) {
     console.log(error)
-    res.status(500).json({ message: error });
+    responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
 
@@ -245,16 +259,16 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
     let auth = authToken(token);
 
     if (auth.status !== 200) {
-      return responHelper(res, auth.status, { data: auth })
+      return responHelper(res, auth.status, { data: auth });
     }
 
-    const { employeeId } = verifyToken(token, process.env.SECRET_KEY)
+    const { employeeId } = verifyToken(token, process.env.SECRET_KEY);
 
     const { check_in_time, latitude, longitude, status, work_type } = req.body
 
     const today = new Date(check_in_time * 1000);
-    const checkInTime = formatterDate(today)
-    const checkin = { latitude, longitude, status }
+    const checkInTime = formatterDate(today);
+    const checkin = { latitude, longitude, status };
 
     const date = new Date();
     const year = date.getFullYear();
@@ -277,9 +291,9 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
       return responHelper(res, 400, { message: 'Anda sudah checkin hari ini.' });
     }
 
-    const query = `UPDATE transactions SET checkin = $1, check_in_time = $2 , work_type = $3 WHERE`;
+    const query = `UPDATE transactions SET checkin = $1, check_in_time = $2 , work_type = $3 WHERE employee_id = $4`;
 
-    await client.query(query, [JSON.stringify(checkin), checkInTime, work_type]);
+    await client.query(query, [JSON.stringify(checkin), checkInTime, work_type, employeeId]);
 
     const queryTransaction = `SELECT id as transaction_id FROM transactions 
       WHERE employee_id = $1

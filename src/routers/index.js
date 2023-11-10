@@ -4,7 +4,7 @@ import accountRoutes from "./user.js";
 import attendanceRoutes from "./attendance.js";
 import questionRouter from "./question.js";
 import divisionRouter from "./devision.js";
-// import { scheduleTransaction } from "../helper/scheduleHelper.js";
+import { scheduleTransaction } from "../helper/scheduleHelper.js";
 
 const routers = express.Router();
 
@@ -14,7 +14,7 @@ rule.hour = 0;
 rule.minute = 30;
 
 schedule.scheduleJob(rule, function () {
-  // scheduleTransaction();
+  scheduleTransaction();
   console.log('Scheduled task executed at 12 AM');
 });
 
