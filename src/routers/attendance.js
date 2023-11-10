@@ -5,7 +5,7 @@ import { checkin, checkout } from "../utils/validation.js";
 import { client } from "../connection/database.js";
 import { authenticateUser  } from "../utils/auth.js";
 import { verifyToken } from "../utils/tokenVerify.js";
-import { formatterDate } from "../helper/formatterDate.js";
+import { formatterDate, formatterDateTwo, formatterDayOff } from "../helper/formatterDate.js";
 import statusResponse from "../utils/status.js";
 
 const attendanceRoutes = express.Router();
@@ -157,7 +157,7 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
     const queryDate = new Date(`${year}-${month}`);
     const queryMonth = queryDate.getMonth() + 1;
 
-    const query = `SELECT id, checkin, checkout, work_type, working_hours, note, activity, check_in_time, check_out_time 
+    const query = `SELECT id, checkin, created_at, checkout, work_type, working_hours, note, activity, check_in_time, check_out_time 
       FROM transactions 
       WHERE employee_id = $1
       AND EXTRACT(MONTH FROM created_at) = $2
@@ -193,6 +193,8 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
         activity: item.activity,
         work_type: item.work_type,
         working_hours: item.working_hours,
+        day: formatterDateTwo(item.created_at),
+        day_off: formatterDayOff(formatterDate(item.created_at))
       };
     });
 
