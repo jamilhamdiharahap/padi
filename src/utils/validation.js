@@ -86,7 +86,6 @@ const checkout = [
   check('status').isIn(['CHECKOUT']),
   check('note').isIn(['ONPROGRESS', 'SELESAI']),
   check('activity').isLength({ min: 10, max: 1000 }).withMessage('Activity harus memiliki minimal 10 maksimal 1000 karakter'),
-  check('transaction_id').notEmpty().withMessage('Transaction_id Id tidak boleh kosong.'),
   (request, response, next) => {
     const errors = validationResult(request);
     if (!errors.isEmpty()) {

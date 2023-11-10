@@ -9,9 +9,10 @@ import {
 import { client } from "../connection/database.js";
 import { responHelper } from "../helper/responHelper.js";
 import CryptoJS from "crypto-js";
-import { authToken, createToken } from "../utils/auth.js";
+import { authenticateUser , createToken } from "../utils/auth.js";
 import { verifyToken } from "../utils/tokenVerify.js";
 import { comparePasswords } from "../helper/comparePassword.js";
+import statusResponse from "../utils/status.js";
 
 const accountRoutes = express.Router();
 
@@ -72,21 +73,14 @@ accountRoutes.post("/login", login, async (req, res) => {
       employeeId: id
     };
 
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth() + 1;
-    const day = today.getDate();
-
     const transactionQuery = `
       SELECT id, check_in_time, check_out_time
       FROM transactions
-      WHERE employee_id = $1
-      AND EXTRACT(YEAR FROM check_in_time) = $2
-      AND EXTRACT(MONTH FROM check_in_time) = $3
-      AND EXTRACT(DAY FROM check_in_time) = $4
+      WHERE (employee_id = $1 AND created_at = (SELECT MAX(created_at) FROM transactions WHERE employee_id = $1))
     `;
 
-    const transaction = await client.query(transactionQuery, [id, year, month, day]);
+    const transaction = await client.query(transactionQuery, [id]);
+
     user.name = name;
     user.nip = nip;
     user.date_of_birth = date_of_birth;
@@ -96,10 +90,9 @@ accountRoutes.post("/login", login, async (req, res) => {
     user.division_name = division_name;
     user.latitude = parseFloat('-6.235064');
     user.longitude = parseFloat('106.821506');
-
-    if (transaction.rows.length > 0) {
-      user.transaction_id = transaction.rows[0].check_in_time !== null && transaction.rows[0].check_out_time === null ? transaction.rows[0].id : null
-    } else {
+    if(transaction.rows.length > 0){
+      user.transaction_id = transaction.rows[0].id
+    }else{
       user.transaction_id = null
     }
 
@@ -199,7 +192,7 @@ accountRoutes.post("/forgot-password", forgetPassword, async (req, res) => {
 accountRoutes.post("/edit-profile", async (req, res) => {
   try {
     let token = req.header("token");
-    let auth = authToken(token);
+    let auth = authenticateUser (token);
     if (auth.status !== 200) {
       return responHelper(res, auth.status, { data: auth })
     }
@@ -213,15 +206,15 @@ accountRoutes.post("/edit-profile", async (req, res) => {
 
     await client.query(query, values)
 
-    responHelper(res, 200, { message: 'Berhasil Memperbaharui profil.' });
+    responHelper(res, statusResponse.OK.code, { message: 'Berhasil Memperbaharui profil.' });
   } catch (error) {
-    responHelper(res, 500, { message: 'Internal server error.' });
+    responHelper(res, statusResponse.INTERNAL_SERVER_ERROR.code, { message: 'Internal server error.' });
   }
 });
 
 accountRoutes.post("/logout", async (req, res) => {
   let token = req.header("token");
-  let auth = authToken(token);
+  let auth = authenticateUser (token);
 
   if (auth.status !== 200) {
     return responHelper(res, auth.status, { data: auth })

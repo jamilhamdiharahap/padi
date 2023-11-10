@@ -3,9 +3,10 @@ import axios from "axios";
 import { responHelper } from "../helper/responHelper.js";
 import { checkin, checkout } from "../utils/validation.js";
 import { client } from "../connection/database.js";
-import { authToken } from "../utils/auth.js";
+import { authenticateUser  } from "../utils/auth.js";
 import { verifyToken } from "../utils/tokenVerify.js";
 import { formatterDate } from "../helper/formatterDate.js";
+import statusResponse from "../utils/status.js";
 
 const attendanceRoutes = express.Router();
 
@@ -41,7 +42,7 @@ function calculateWorkingHours(startTimestamp, endTimestamp) {
 
 attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
   let token = req.header("token");
-  let auth = authToken(token);
+  let auth = authenticateUser (token);
 
   if (auth.status !== 200) {
     return responHelper(res, auth.status, { data: auth })
@@ -122,7 +123,7 @@ attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
     const totalMinutesRemaining = totalMinutes % 60;
     const totalWorkingHours = `${totalHours.toString().padStart(2, '0')}:${totalMinutesRemaining.toString().padStart(2, '0')}`;
 
-    responHelper(res, 200, {
+    responHelper(res, statusResponse.OK.code, {
       data: {
         total_working_day: (datesInMonth.length - totalWorking).toString(),
         employee_working_day: rows.length.toString(),
@@ -144,7 +145,7 @@ attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
 attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
   try {
     let token = req.header("token");
-    let auth = authToken(token);
+    let auth = authenticateUser (token);
 
     if (auth.status !== 200) {
       return responHelper(res, auth.status, { data: auth })
@@ -194,7 +195,7 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
       };
     });
 
-    responHelper(res, 200, { data, message: `${data.length > 0 ? 'Data Ditemukan.' : 'Data Kosong'}` });
+    responHelper(res, statusResponse.OK.code, { data, message: `${data.length > 0 ? 'Data Ditemukan.' : 'Data Kosong'}` });
   } catch (error) {
     responHelper(res, 500, { message: 'Internal server error.' });
   }
@@ -203,7 +204,7 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
 attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
   try {
     let token = req.header("token");
-    let auth = authToken(token);
+    let auth = authenticateUser (token);
 
     if (auth.status !== 200) {
       return responHelper(res, auth.status, { data: auth })
@@ -256,7 +257,7 @@ attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
 attendanceRoutes.post('/checkin', checkin, async (req, res) => {
   try {
     let token = req.header("token");
-    let auth = authToken(token);
+    let auth = authenticateUser (token);
 
     if (auth.status !== 200) {
       return responHelper(res, auth.status, { data: auth });
@@ -270,41 +271,29 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
     const checkInTime = formatterDate(today);
     const checkin = { latitude, longitude, status };
 
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-
-    const params = new Date(checkInTime)
-
-    const queryCheck = `SELECT id AS transaction_id
-      FROM transactions
-      WHERE employee_id = $1
-      AND EXTRACT(YEAR FROM check_in_time) = $2
-      AND EXTRACT(MONTH FROM check_in_time) = $3
-      AND EXTRACT(DAY FROM check_in_time) = $4
+    const queryCheck = `SELECT checkin, created_at
+    FROM transactions
+    WHERE employee_id = $1
+    ORDER BY created_at DESC
+    LIMIT 1;     
     `;
 
-    const { rows } = await client.query(queryCheck, [employeeId, year, month, day]);
+    const { rows } = await client.query(queryCheck, [employeeId]);
 
-    if (rows.length > 0) {
-      return responHelper(res, 400, { message: 'Anda sudah checkin hari ini.' });
+    if (rows[0].checkin !== null) {
+      return responHelper(res, statusResponse.BAD_REQUEST.code, { message: 'Anda sudah checkin hari ini.' });
     }
 
-    const query = `UPDATE transactions SET checkin = $1, check_in_time = $2 , work_type = $3 WHERE employee_id = $4`;
+    const query = `UPDATE transactions
+    SET checkin = $1, check_in_time = $2, work_type = $3
+    WHERE (employee_id = $4 AND created_at = (SELECT MAX(created_at) FROM transactions WHERE employee_id = $4));
+    `;
 
     await client.query(query, [JSON.stringify(checkin), checkInTime, work_type, employeeId]);
 
-    const queryTransaction = `SELECT id as transaction_id FROM transactions 
-      WHERE employee_id = $1
-      AND EXTRACT(YEAR FROM check_in_time) = $2
-      AND EXTRACT(MONTH FROM check_in_time) = $3
-      AND EXTRACT(DAY FROM check_in_time) = $4
-    `;
-    const transactionId = await client.query(queryTransaction, [employeeId, params.getFullYear(), params.getMonth() + 1, params.getDate()])
-
-    responHelper(res, 200, { data: transactionId.rows[0], message: 'Checkin berhasil.' });
+    responHelper(res, statusResponse.OK.code, { data: null, message: 'Checkin berhasil.' });
   } catch (error) {
+    console.log(error)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
@@ -312,22 +301,30 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
 attendanceRoutes.post('/checkout', checkout, async (req, res) => {
   try {
     let token = req.header("token")
-    let auth = authToken(token)
+    let auth = authenticateUser (token)
 
     if (auth.status !== 200) {
       return responHelper(res, auth.status, { data: auth })
     }
 
-    const { note, activity, check_out_time, latitude, longitude, status, transaction_id } = req.body
+    const { note, activity, check_out_time, latitude, longitude, status } = req.body
+    const { employeeId } = verifyToken(token, process.env.SECRET_KEY);
 
     const today = new Date(check_out_time * 1000);
     const timestamp = formatterDate(today);
 
     const checkout = { latitude, longitude, status }
 
-    const queryCheck = `SELECT * FROM transactions WHERE id = $1`;
+    const queryCheck = `
+    SELECT checkin, checkout, check_in_time
+    FROM transactions
+    WHERE employee_id = $1
+    ORDER BY created_at DESC
+    LIMIT 1;
+    `;
 
-    const { rows } = await client.query(queryCheck, [transaction_id]);
+    const { rows } = await client.query(queryCheck, [employeeId]);
+
     if (rows[0].checkin == null) {
       return responHelper(res, 400, { message: 'Silahkan checkin terlebih dahulu.' });
     }
@@ -335,8 +332,6 @@ attendanceRoutes.post('/checkout', checkout, async (req, res) => {
     if (rows[0].checkout !== null) {
       return responHelper(res, 400, { message: 'Anda sudah checkout hari ini.' });
     }
-
-
 
     const checkInTime = formatterDate(rows[0].check_in_time);
 
@@ -347,16 +342,16 @@ attendanceRoutes.post('/checkout', checkout, async (req, res) => {
 
     const query = `UPDATE transactions 
       SET checkout = $1, note = $2, activity = $3, working_hours = $4, check_out_time = $5
-      WHERE id = $6
+      WHERE (employee_id = $6 AND created_at = (SELECT MAX(created_at) FROM transactions WHERE employee_id = $6))
     `;
-    const values = [JSON.stringify(checkout), note, activity, workingHours, timestamp, transaction_id]
+    const values = [JSON.stringify(checkout), note, activity, workingHours, timestamp, employeeId]
 
     await client.query(query, values);
 
-    responHelper(res, 200, { message: 'Checkout berhasil.' });
+    responHelper(res, statusResponse.OK.code, { message: 'Checkout berhasil.' });
   } catch (error) {
     console.log(error)
-    responHelper(res, 500, { message: 'Internal server error.' });
+    responHelper(res, statusResponse.INTERNAL_SERVER_ERROR.code, { message: 'Internal server error.' });
   }
 });
 
@@ -368,7 +363,7 @@ attendanceRoutes.post('/delete/:id', async (req, res) => {
 
     responHelper(res, 200, { message: 'Delete berhasil.' });
   } catch (error) {
-    responHelper(res, 500, { message: 'Internal server error.' });
+    responHelper(res, statusResponse.INTERNAL_SERVER_ERROR.code, { message: 'Internal server error.' });
   }
 });
 

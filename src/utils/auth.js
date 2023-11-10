@@ -34,7 +34,7 @@ function getDaysInMonth(year, month) {
  return new Date(year, month + 1, 0).getDate();
 }
 
-export function authToken(token) {
+export function authenticateUser(token) {
 
  const secretKey = process.env.SECRET_KEY;
 
