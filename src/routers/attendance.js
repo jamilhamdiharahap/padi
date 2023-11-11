@@ -303,60 +303,95 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
   }
 });
 
-attendanceRoutes.post('/checkout', checkout, async (req, res) => {
-  try {
-    let token = req.header("token")
-    let auth = authenticateUser(token)
+attendanceRoutes.post('/checkout/:id?', checkout, async (req, res) => {
+  let token = req.header("token")
+  let auth = authenticateUser(token)
 
-    if (auth.status !== 200) {
-      return responHelper(res, auth.status, { data: auth })
-    }
-
+  if (auth.status !== 200) {
+    return responHelper(res, auth.status, { data: auth })
+  } else {
+    const { id } = req.params
     const { note, activity, check_out_time, latitude, longitude, status } = req.body
-    const { employeeId } = verifyToken(token, process.env.SECRET_KEY);
+    if (id) {
+      try {
+        const query = `UPDATE transactions 
+        SET checkout = $1, note = $2, activity = $3, working_hours = $4, check_out_time = $5
+        WHERE id = $6
+        `;
+        
+        const today = new Date(check_out_time * 1000);
+        const timestamp = formatterDate(today);
 
-    const today = new Date(check_out_time * 1000);
-    const timestamp = formatterDate(today);
+        const checkout = { latitude, longitude, status }
 
-    const checkout = { latitude, longitude, status }
+        const queryCheck = `
+          SELECT checkin, checkout, check_in_time
+          FROM transactions
+          WHERE id = $1
+        `;
 
-    const queryCheck = `
-    SELECT checkin, checkout, check_in_time
-    FROM transactions
-    WHERE employee_id = $1
-    ORDER BY created_at DESC
-    LIMIT 1;
-    `;
+        const { rows } = await client.query(queryCheck, [id]);
 
-    const { rows } = await client.query(queryCheck, [employeeId]);
+        const checkInTime = formatterDate(rows[0].check_in_time);
 
-    if (rows[0].checkin == null) {
-      return responHelper(res, 400, { message: 'Silahkan checkin terlebih dahulu.' });
+        const startTimestamp = new Date(`${checkInTime}`).getTime();
+        const endTimestamp = new Date(`${timestamp}`).getTime();
+        const workingHours = calculateWorkingHours(startTimestamp, endTimestamp);
+
+        const values = [JSON.stringify(checkout), note, activity, workingHours, timestamp, id]
+        await client.query(query, values);
+
+        responHelper(res, statusResponse.OK.code, { message: 'Checkout berhasil.' });
+      } catch (error) {
+        responHelper(res, statusResponse.INTERNAL_SERVER_ERROR.code, { message: 'Internal server error.' });
+      }
+    } else {
+      try {
+        const { employeeId } = verifyToken(token, process.env.SECRET_KEY);
+
+        const today = new Date(check_out_time * 1000);
+        const timestamp = formatterDate(today);
+
+        const checkout = { latitude, longitude, status }
+
+        const queryCheck = `
+          SELECT checkin, checkout, check_in_time
+          FROM transactions
+          WHERE employee_id = $1
+          ORDER BY created_at DESC
+          LIMIT 1;
+        `;
+
+        const { rows } = await client.query(queryCheck, [employeeId]);
+
+        if (rows[0].checkin == null) {
+          return responHelper(res, 400, { message: 'Silahkan checkin terlebih dahulu.' });
+        }
+
+        if (rows[0].checkout !== null) {
+          return responHelper(res, 400, { message: 'Anda sudah checkout hari ini.' });
+        }
+
+        const checkInTime = formatterDate(rows[0].check_in_time);
+
+        const startTimestamp = new Date(`${checkInTime}`).getTime();
+        const endTimestamp = new Date(`${timestamp}`).getTime();
+
+        const workingHours = calculateWorkingHours(startTimestamp, endTimestamp);
+
+        const query = `UPDATE transactions 
+        SET checkout = $1, note = $2, activity = $3, working_hours = $4, check_out_time = $5
+        WHERE (employee_id = $6 AND created_at = (SELECT MAX(created_at) FROM transactions WHERE employee_id = $6))
+        `;
+        const values = [JSON.stringify(checkout), note, activity, workingHours, timestamp, employeeId]
+
+        await client.query(query, values);
+
+        responHelper(res, statusResponse.OK.code, { message: 'Checkout berhasil.' });
+      } catch (error) {
+        responHelper(res, statusResponse.INTERNAL_SERVER_ERROR.code, { message: 'Internal server error.' });
+      }
     }
-
-    if (rows[0].checkout !== null) {
-      return responHelper(res, 400, { message: 'Anda sudah checkout hari ini.' });
-    }
-
-    const checkInTime = formatterDate(rows[0].check_in_time);
-
-    const startTimestamp = new Date(`${checkInTime}`).getTime();
-    const endTimestamp = new Date(`${timestamp}`).getTime();
-
-    const workingHours = calculateWorkingHours(startTimestamp, endTimestamp);
-
-    const query = `UPDATE transactions 
-      SET checkout = $1, note = $2, activity = $3, working_hours = $4, check_out_time = $5
-      WHERE (employee_id = $6 AND created_at = (SELECT MAX(created_at) FROM transactions WHERE employee_id = $6))
-    `;
-    const values = [JSON.stringify(checkout), note, activity, workingHours, timestamp, employeeId]
-
-    await client.query(query, values);
-
-    responHelper(res, statusResponse.OK.code, { message: 'Checkout berhasil.' });
-  } catch (error) {
-    console.log(error)
-    responHelper(res, statusResponse.INTERNAL_SERVER_ERROR.code, { message: 'Internal server error.' });
   }
 });
 
@@ -372,7 +407,7 @@ attendanceRoutes.post('/delete/:id', async (req, res) => {
   }
 });
 
-attendanceRoutes.post('/correction/:id',correction, async (req, res) => {
+attendanceRoutes.post('/correction/:id', correction, async (req, res) => {
   let token = req.header("token")
   let auth = authenticateUser(token)
 
