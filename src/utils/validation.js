@@ -110,11 +110,25 @@ const checkAccount = [
   },
 ];
 
+const correction = [
+  body('activity').notEmpty().withMessage('Activity tidak boleh kosong'),
+  body('activity').isLength({ max: 1000 }).withMessage('Activity maksimal 1000 karakter'),
+  body('note').notEmpty().withMessage('Note tidak boleh kosong'),
+  (request, response, next) => {
+    const errors = validationResult(request);
+    if (!errors.isEmpty()) {
+      return response.status(422).json({ errors: errors.array() });
+    }
+    next();
+  },
+];
+
 export {
   registerValidation,
   login,
   forgetPassword,
   checkin,
   checkout,
-  checkAccount
+  checkAccount,
+  correction
 };

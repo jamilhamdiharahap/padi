@@ -11,9 +11,9 @@ export function formatterDateTwo(isoDateString) {
 }
 
 export function formatterDayOff(isoDateString) {
- const year = isoDateString.slice(0,4);
- const month = isoDateString.slice(5,7);
- const day = isoDateString.slice(8,10);
+ const year = isoDateString.slice(0, 4);
+ const month = isoDateString.slice(5, 7);
+ const day = isoDateString.slice(8, 10);
 
  const firstDay = new Date(year, month - 1, day);
 

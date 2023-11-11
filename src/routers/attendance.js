@@ -1,12 +1,12 @@
-import express from "express";
+import express, { query } from "express";
 import axios from "axios";
+import statusResponse from "../utils/status.js";
 import { responHelper } from "../helper/responHelper.js";
-import { checkin, checkout } from "../utils/validation.js";
+import { checkin, checkout, correction } from "../utils/validation.js";
 import { client } from "../connection/database.js";
-import { authenticateUser  } from "../utils/auth.js";
+import { authenticateUser } from "../utils/auth.js";
 import { verifyToken } from "../utils/tokenVerify.js";
 import { formatterDate, formatterDateTwo, formatterDayOff } from "../helper/formatterDate.js";
-import statusResponse from "../utils/status.js";
 
 const attendanceRoutes = express.Router();
 
@@ -42,7 +42,7 @@ function calculateWorkingHours(startTimestamp, endTimestamp) {
 
 attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
   let token = req.header("token");
-  let auth = authenticateUser (token);
+  let auth = authenticateUser(token);
 
   if (auth.status !== 200) {
     return responHelper(res, auth.status, { data: auth })
@@ -129,7 +129,7 @@ attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
         employee_working_day: rows.length.toString(),
         standard_working_hour: ((datesInMonth.length - totalWorking) * 8).toString(),
         employee_working_hours: totalWorkingHours,
-        not_present: notPresent.toString(), 
+        not_present: notPresent.toString(),
         wfh: wfh.length.toString(),
         wfo: wfo.length.toString(),
         late: late.toString()
@@ -145,7 +145,7 @@ attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
 attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
   try {
     let token = req.header("token");
-    let auth = authenticateUser (token);
+    let auth = authenticateUser(token);
 
     if (auth.status !== 200) {
       return responHelper(res, auth.status, { data: auth })
@@ -200,6 +200,7 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
 
     responHelper(res, statusResponse.OK.code, { data, message: `${data.length > 0 ? 'Data Ditemukan.' : 'Data Kosong'}` });
   } catch (error) {
+    console.log(error)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
@@ -207,7 +208,7 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
 attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
   try {
     let token = req.header("token");
-    let auth = authenticateUser (token);
+    let auth = authenticateUser(token);
 
     if (auth.status !== 200) {
       return responHelper(res, auth.status, { data: auth })
@@ -260,7 +261,7 @@ attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
 attendanceRoutes.post('/checkin', checkin, async (req, res) => {
   try {
     let token = req.header("token");
-    let auth = authenticateUser (token);
+    let auth = authenticateUser(token);
 
     if (auth.status !== 200) {
       return responHelper(res, auth.status, { data: auth });
@@ -272,6 +273,7 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
 
     const today = new Date(check_in_time * 1000);
     const checkInTime = formatterDate(today);
+
     const checkin = { latitude, longitude, status };
 
     const queryCheck = `SELECT checkin, created_at
@@ -291,7 +293,7 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
     SET checkin = $1, check_in_time = $2, work_type = $3
     WHERE (employee_id = $4 AND created_at = (SELECT MAX(created_at) FROM transactions WHERE employee_id = $4));
     `;
-
+    console.log(JSON.stringify(checkin))
     await client.query(query, [JSON.stringify(checkin), checkInTime, work_type, employeeId]);
 
     responHelper(res, statusResponse.OK.code, { data: null, message: 'Checkin berhasil.' });
@@ -304,7 +306,7 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
 attendanceRoutes.post('/checkout', checkout, async (req, res) => {
   try {
     let token = req.header("token")
-    let auth = authenticateUser (token)
+    let auth = authenticateUser(token)
 
     if (auth.status !== 200) {
       return responHelper(res, auth.status, { data: auth })
@@ -367,6 +369,29 @@ attendanceRoutes.post('/delete/:id', async (req, res) => {
     responHelper(res, 200, { message: 'Delete berhasil.' });
   } catch (error) {
     responHelper(res, statusResponse.INTERNAL_SERVER_ERROR.code, { message: 'Internal server error.' });
+  }
+});
+
+attendanceRoutes.post('/correction/:id',correction, async (req, res) => {
+  let token = req.header("token")
+  let auth = authenticateUser(token)
+
+  if (auth.status !== 200) {
+    return responHelper(res, auth.status, { data: auth });
+  } else {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        responHelper(res, statusResponse.BAD_REQUEST.code, { message: statusResponse.BAD_REQUEST.message });
+      }
+      const { activity, note } = req.body;
+      const query = `UPDATE transactions SET activity = $1, note = $2 WHERE id = $3`;
+      await client.query(query, [activity, note, id]);
+
+      responHelper(res, 200, { message: 'Correction berhasil.' });
+    } catch (error) {
+      responHelper(res, statusResponse.INTERNAL_SERVER_ERROR.code, { message: 'Internal server error.' });
+    }
   }
 });
 

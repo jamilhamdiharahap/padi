@@ -30,9 +30,9 @@ function authProtocol(token, duration, KEY) {
 }
 
 
-function getDaysInMonth(year, month) {
- return new Date(year, month + 1, 0).getDate();
-}
+// function getDaysInMonth(year, month) {
+//  return new Date(year, month + 1, 0).getDate();
+// }
 
 export function authenticateUser(token) {
 
@@ -45,7 +45,7 @@ export function authenticateUser(token) {
  // const currentDate = today.getDate();
  // const remainingDays = daysInMonth - currentDate;
  const expiresIn = 3600 * 24 * 30;
- const compareToken =  CryptoJS.AES.decrypt(token, process.env.HASING_KEY).toString(CryptoJS.enc.Utf8)
+ const compareToken = CryptoJS.AES.decrypt(token, process.env.HASING_KEY).toString(CryptoJS.enc.Utf8)
 
  return authProtocol(compareToken, expiresIn, secretKey);
 }
