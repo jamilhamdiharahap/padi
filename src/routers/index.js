@@ -11,7 +11,7 @@ const routers = express.Router();
 
 const rule = new schedule.RecurrenceRule();
 rule.hour = 0;
-rule.minute = 20;
+rule.minute = 30;
 
 schedule.scheduleJob(rule, function () {
   scheduleTransaction();
