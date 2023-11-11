@@ -318,7 +318,7 @@ attendanceRoutes.post('/checkout/:id?', checkout, async (req, res) => {
         SET checkout = $1, note = $2, activity = $3, working_hours = $4, check_out_time = $5
         WHERE id = $6
         `;
-        
+
         const today = new Date(check_out_time * 1000);
         const timestamp = formatterDate(today);
 
