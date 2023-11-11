@@ -8,7 +8,10 @@ export async function scheduleTransaction() {
   const month = today.slice(0, 2)
   const day = today.slice(3, 5)
   const year = today.slice(6, 10)
-  let formatToday = [year, month, day].join('-')
+
+  let formatToday = [year, month, day].join('-');
+  
+  console.log(today, formatToday, oke)
   rows.map(async item => {
    const query = `INSERT INTO transactions (employee_id, created_at) VALUES ($1, $2)`;
    await client.query(query, [item.id, formatToday])
