@@ -11,6 +11,11 @@ app.get("/api/v1", (_, res) => {
     res.status(200).json({ message: "Welcome To Padi!" });
 });
 
+app.get("/api/cron", async (req, res, next) => {
+    console.log("okkkkk")
+    return
+});
+
 app.use(routers);
 
 
