@@ -19,7 +19,7 @@ const routers = express.Router();
 //   console.log('Scheduled task executed at 12 AM');
 // });
 
-// const job = new CronJob('11 21 * * *',
+// const job = new CronJob('18 23 * * *',
 // 	function () {
 //     scheduleTransaction()
 //     console.log('Scheduled task executed at 1 AM');

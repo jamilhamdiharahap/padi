@@ -12,10 +12,11 @@
          "dest": "/app.js"
      }
  ],
- "crons": [
-    {
-      "path": "/helper/scheduleHelper", 
-      "schedule": "7 11 * * *"
+ "functions": {
+    "scheduled-function": {
+      "file": "schedular.js",
+      "schedule": "cron(0 0 * * *)"
     }
-  ]
+  }
+ 
 }
