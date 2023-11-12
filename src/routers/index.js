@@ -4,8 +4,8 @@ import accountRoutes from "./user.js";
 import attendanceRoutes from "./attendance.js";
 import questionRouter from "./question.js";
 import divisionRouter from "./devision.js";
-import { scheduleTransaction } from "../helper/scheduleHelper.js";
-import { CronJob } from 'cron';
+// import { scheduleTransaction } from "../helper/scheduleHelper.js";
+// import { CronJob } from 'cron';
 
 const routers = express.Router();
 
@@ -19,17 +19,17 @@ const routers = express.Router();
 //   console.log('Scheduled task executed at 12 AM');
 // });
 
-const job = new CronJob('11 21 * * *',
-	function () {
-    scheduleTransaction()
-    console.log('Scheduled task executed at 1 AM');
-	}, 
-	null,
-	true,
-	'Asia/Jakarta'
-);
+// const job = new CronJob('11 21 * * *',
+// 	function () {
+//     scheduleTransaction()
+//     console.log('Scheduled task executed at 1 AM');
+// 	}, 
+// 	null,
+// 	true,
+// 	'Asia/Jakarta'
+// );
 
-job.start();
+// job.start();
 
 routers.use((req, res, next) => {
   const apiKey = req.header("API-KEY");
