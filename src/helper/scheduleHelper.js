@@ -10,7 +10,7 @@ export async function scheduleTransaction() {
   const year = today.slice(6, 10)
 
   let formatToday = [year, month, day].join('-');
-  
+
   rows.map(async item => {
    const query = `INSERT INTO transactions (employee_id, created_at) VALUES ($1, $2)`;
    await client.query(query, [item.id, formatToday])
