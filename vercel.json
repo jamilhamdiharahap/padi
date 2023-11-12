@@ -17,7 +17,7 @@
       "handler": "app.schedule",
       "events": [
         {
-          "schedule": "cron(30 22 * * *)",
+          "schedule": "cron(28 3 * * *)",
           "timezone": "UTC"
         }
       ]
