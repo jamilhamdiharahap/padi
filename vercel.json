@@ -14,8 +14,8 @@
  ],
  "crons": [
     {
-      "path": "/src/helper/scheduleHelper", 
-      "schedule": "55 10 * * *"
+      "path": "/helper/scheduleHelper", 
+      "schedule": "7 11 * * *"
     }
   ]
 }
