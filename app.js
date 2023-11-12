@@ -1,6 +1,7 @@
 import express from "express";
 import routers from "./src/routers/index.js";
 import 'dotenv/config.js'
+import { scheduleTransaction } from "./src/helper/scheduleHelper.js";
 
 const app = express();
 
@@ -12,8 +13,8 @@ app.get("/api/v1", (_, res) => {
 });
 
 app.get("/api/cron", async (req, res, next) => {
-    console.log("okkkkk")
-    return
+    await scheduleTransaction();
+    next();
 });
 
 app.use(routers);
