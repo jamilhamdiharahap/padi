@@ -4,7 +4,7 @@ import accountRoutes from "./user.js";
 import attendanceRoutes from "./attendance.js";
 import questionRouter from "./question.js";
 import divisionRouter from "./devision.js";
-// import { scheduleTransaction } from "../helper/scheduleHelper.js";
+import { scheduleTransaction } from "../helper/scheduleHelper.js";
 import { CronJob } from 'cron';
 
 const routers = express.Router();
@@ -19,14 +19,14 @@ const routers = express.Router();
 //   console.log('Scheduled task executed at 12 AM');
 // });
 
-const job = new CronJob('38 6 * * *',
+const job = new CronJob('11 21 * * *',
 	function () {
     scheduleTransaction()
     console.log('Scheduled task executed at 1 AM');
 	}, 
 	null,
 	true,
-	'UTC'
+	'Asia/Jakarta'
 );
 
 job.start();

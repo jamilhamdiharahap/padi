@@ -11,12 +11,12 @@ export async function scheduleTransaction() {
 
   let formatToday = [year, month, day].join('-');
   
-  console.log(today, formatToday, oke)
   rows.map(async item => {
    const query = `INSERT INTO transactions (employee_id, created_at) VALUES ($1, $2)`;
    await client.query(query, [item.id, formatToday])
   })
  } catch (error) {
+  console.log(error)
   console.log("Error Schedule!")
  }
 }
