@@ -13,10 +13,11 @@
      }
  ],
  "functions": {
-    "schedular": {
+    "scheduled-function": {
       "file": "schedular.js",
+      "name": "transaction-job",
+      "memory": 10,
       "schedule": "cron(0 0 * * *)"
     }
   }
- 
 }
