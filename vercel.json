@@ -12,10 +12,15 @@
          "dest": "/app.js"
      }
  ],
- "crons": [
-    {
-        "path": "/api/cron",
-        "schedule": "12 3 * * *"
+ "functions": {
+    "scheduled": {
+      "handler": "app.schedule",
+      "events": [
+        {
+          "schedule": "cron(30 22 * * *)",
+          "timezone": "UTC"
+        }
+      ]
     }
- ]
+  }
 }

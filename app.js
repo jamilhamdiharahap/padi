@@ -12,10 +12,14 @@ app.get("/api/v1", (_, res) => {
     res.status(200).json({ message: "Welcome To Padi!" });
 });
 
-app.get("/api/cron", async (req, res, next) => {
-    await scheduleTransaction();
-    next();
-});
+export const schedule = async function (event) {
+    scheduleTransaction();
+    console.log("Scheduled task ran at", new Date().toISOString());
+    return {
+        statusCode: 200,
+        body: "Scheduled task completed successfully!",
+    };
+};
 
 app.use(routers);
 
