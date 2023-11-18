@@ -1,6 +1,9 @@
-import { client } from "../connection/database.js"
+import express from 'express'
+import { client } from '../../connection/database.js'
 
-export async function scheduleTransaction() {
+const app = express()
+
+app.get("/", async (req, res) => {
  try {
   const queryEmployee = `SELECT id FROM employees`;
   const { rows } = await client.query(queryEmployee)
@@ -15,7 +18,8 @@ export async function scheduleTransaction() {
    const query = `INSERT INTO transactions (employee_id, created_at) VALUES ($1, $2)`;
    await client.query(query, [item.id, formatToday])
   })
+  res.status(200).send("schedule OK.")
  } catch (error) {
   console.log("Error Schedule!")
  }
-}
+})
