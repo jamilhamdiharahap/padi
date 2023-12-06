@@ -1,9 +1,11 @@
-import express from 'express'
-import { client } from '../../connection/database.js'
+import express from "express";
+import { responHelper } from "../helper/responHelper.js";
+import { client } from "../connection/database.js";
 
-const app = express()
 
-app.get("/", async (req, res) => {
+const scheduleRouter = express.Router();
+
+scheduleRouter.get("/schedule", async (req, res) => {
  try {
   const queryEmployee = `SELECT id FROM employees`;
   const { rows } = await client.query(queryEmployee)
@@ -18,8 +20,11 @@ app.get("/", async (req, res) => {
    const query = `INSERT INTO transactions (employee_id, created_at) VALUES ($1, $2)`;
    await client.query(query, [item.id, formatToday])
   })
-  res.status(200).send("schedule OK.")
+  responHelper(res, 200, { message: 'schedule OK.' });
  } catch (error) {
-  console.log("Error Schedule!")
+  responHelper(res, 500, { message: 'Error Schedule!.' });
  }
 })
+
+
+export default scheduleRouter;
