@@ -1,28 +1,33 @@
 import express from "express";
 import { responHelper } from "../helper/responHelper.js";
 import { client } from "../connection/database.js";
+import { verifyToken } from "../utils/tokenVerify.js";
 
 
 const scheduleRouter = express.Router();
 
 scheduleRouter.get("/schedule", async (req, res) => {
- try {
-  const queryEmployee = `SELECT id FROM employees`;
-  const { rows } = await client.query(queryEmployee)
-  const today = new Date().toLocaleDateString();
-  const month = today.slice(0, 2)
-  const day = today.slice(3, 5)
-  const year = today.slice(6, 10)
+ let token = req.header("token");
+ let auth = authenticateUser(token);
 
-  let formatToday = [year, month, day].join('-');
+ if (auth.status !== 200) {
+  return responHelper(res, auth.status, { data: auth })
+ } else {
+  try {
+   const { employeeId } = verifyToken(token, process.env.SECRET_KEY)
+   const today = new Date().toLocaleDateString();
+   const month = today.slice(0, 2)
+   const day = today.slice(3, 5)
+   const year = today.slice(6, 10)
 
-  rows.map(async item => {
+   let formatToday = [year, month, day].join('-');
    const query = `INSERT INTO transactions (employee_id, created_at) VALUES ($1, $2)`;
-   await client.query(query, [item.id, formatToday])
-  })
-  responHelper(res, 200, { message: 'schedule OK.' });
- } catch (error) {
-  responHelper(res, 500, { message: 'Error Schedule!.' });
+   await client.query(query, [employeeId, formatToday])
+
+   responHelper(res, 200, { message: 'schedule OK.' });
+  } catch (error) {
+   responHelper(res, 500, { message: 'Error Schedule!.' });
+  }
  }
 })
 
