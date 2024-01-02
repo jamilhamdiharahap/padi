@@ -21,7 +21,14 @@ scheduleRouter.get("/schedule", async (req, res) => {
    const year = today.slice(6, 10)
 
    let formatToday = [year, month, day].join('-');
-   const query = `INSERT INTO transactions (employee_id, created_at) VALUES ($1, $2)`;
+   const checkQuery = `SELECT * FROM transactions WHERE employee_id = $1 AND created_at = $2`
+   const checkResult = await client.query(checkQuery, [employeeId, formatToday])
+
+   if (checkResult.rows.length > 0) {
+    return responHelper(res, 400, { message: 'Already scheduled for today.' })
+   }
+
+   const query = `INSERT INTO transactions (employee_id, created_at) VALUES ($1, $2)`
    await client.query(query, [employeeId, formatToday])
 
    responHelper(res, 200, { message: 'schedule OK.' });

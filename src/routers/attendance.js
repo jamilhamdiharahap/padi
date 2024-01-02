@@ -298,7 +298,6 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
 
     responHelper(res, statusResponse.OK.code, { data: null, message: 'Checkin berhasil.' });
   } catch (error) {
-    console.log(error)
     responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
