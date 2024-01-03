@@ -1,4 +1,4 @@
-import express, { query } from "express";
+import express from "express";
 import axios from "axios";
 import statusResponse from "../utils/status.js";
 import { responHelper } from "../helper/responHelper.js";
