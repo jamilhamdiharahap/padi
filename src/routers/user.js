@@ -59,15 +59,16 @@ accountRoutes.post("/login", login, async (req, res) => {
     }
 
     const employeeQuery = `
-      SELECT a.name, a.nip, a.date_of_birth, a.address, a.religion, a.id, b.position_name, c.division_name
+      SELECT a.name, a.nip, a.date_of_birth, a.address, a.religion, a.id, b.position_name, c.division_name, d.latitude, d.longitude, d.name as office_name
       FROM employees a
       INNER JOIN positions b ON a.position_id = b.id
       INNER JOIN divisions c ON c.id = b.division_id
+      INNER JOIN office_locations d ON d.id = a.location_id
       WHERE account_id = $1
     `;
 
     const employeeItem = await client.query(employeeQuery, [user.id]);
-    const { id, name, nip, date_of_birth, division_name, position_name, religion, address } = employeeItem.rows[0];
+    const { id, name, nip, date_of_birth, division_name, position_name, religion, address, latitude, longitude, office_name } = employeeItem.rows[0];
 
     const tokenPayload = {
       employeeId: id
@@ -88,13 +89,59 @@ accountRoutes.post("/login", login, async (req, res) => {
     user.religion = religion;
     user.position_name = position_name;
     user.division_name = division_name;
-    user.latitude = parseFloat('-6.235064');
-    user.longitude = parseFloat('106.821506');
+    user.latitude = parseFloat(latitude);
+    user.longitude = parseFloat(longitude);
+    user.office_name = office_name;
     if(transaction.rows.length > 0){
       user.transaction_id = transaction.rows[0].id
     }else{
       user.transaction_id = null
     }
+
+    const token = createToken(tokenPayload);
+    responHelper(res, 200, { data: user, token, message: 'Login successful' });
+  } catch (error) {
+    console.log(error)
+    responHelper(res, 500, { message: 'Internal server error.' });
+  }
+});
+
+accountRoutes.post("/web/login", login, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const accountQuery = `
+      SELECT a.id, a.email, a.password, a.access_code, a.device_access, a.reminder, b.status 
+      FROM accounts a
+      INNER JOIN roles b ON a.role_id = b.id
+      WHERE a.email = $1 AND b.status = $2
+    `;
+
+    const { rows } = await client.query(accountQuery, [email, 'ADMIN']);
+
+    if (rows.length === 0) {
+      return responHelper(res, 400, { data: null, message: 'Email Tidak Ditemukan' });
+    }
+
+    const user = rows[0];
+
+    if (!comparePasswords(user.password, password, process.env.HASING_KEY)) {
+      return responHelper(res, 400, { data: null, message: 'Invalid password' });
+    }
+
+    const employeeQuery = `
+      SELECT a.name, a.nip, a.date_of_birth, a.address, a.religion, a.id, b.position_name, c.division_name
+      FROM employees a
+      INNER JOIN positions b ON a.position_id = b.id
+      INNER JOIN divisions c ON c.id = b.division_id
+      WHERE account_id = $1
+    `;
+
+    const employeeItem = await client.query(employeeQuery, [user.id]);
+
+    const tokenPayload = {
+      employeeItem
+    };
 
     const token = createToken(tokenPayload);
     responHelper(res, 200, { data: user, token, message: 'Login successful' });

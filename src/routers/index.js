@@ -3,6 +3,7 @@ import accountRoutes from "./user.js";
 import attendanceRoutes from "./attendance.js";
 import questionRouter from "./question.js";
 import divisionRouter from "./devision.js";
+import locationRouter from "./location.js";
 import scheduleRouter from "./cron.js";
 
 const routers = express.Router();
@@ -23,6 +24,7 @@ routers.use("/api/v1", accountRoutes);
 routers.use("/api/v1", questionRouter);
 routers.use("/api/v1", divisionRouter);
 routers.use("/api/v1", attendanceRoutes);
-routers.use("/api/v1", scheduleRouter)
+routers.use("/api/v1", scheduleRouter);
+routers.use("/api/v1", locationRouter);
 
 export default routers;

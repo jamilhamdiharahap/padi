@@ -14,6 +14,6 @@ app.get("/api/v1", (_, res) => {
 app.use(routers);
 
 
-app.listen(3000, () => {
+app.listen(3001, () => {
     console.log("aplication running ...");
 });

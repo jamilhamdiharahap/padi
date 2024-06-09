@@ -318,8 +318,8 @@ attendanceRoutes.post('/checkout/:id?', checkout, async (req, res) => {
         WHERE id = $6
         `;
 
-        const today = new Date(check_out_time * 1000);
-        const timestamp = formatterDate(today);
+        const today = new Date((check_out_time + 7 * 3600) * 1000);
+        const timestamp = today.toISOString();
 
         const checkout = { latitude, longitude, status }
 
@@ -426,6 +426,21 @@ attendanceRoutes.post('/correction/:id', correction, async (req, res) => {
     } catch (error) {
       responHelper(res, statusResponse.INTERNAL_SERVER_ERROR.code, { message: 'Internal server error.' });
     }
+  }
+});
+
+attendanceRoutes.get('/permission', async (req, res) => {
+  try {
+    let token = req.header("token");
+    let auth = authenticateUser(token);
+
+    if (auth.status !== 200) {
+      return responHelper(res, auth.status, { data: auth })
+    }
+
+  } catch (error) {
+    console.log(error)
+    responHelper(res, 500, { message: 'Internal server error.' });
   }
 });
 
