@@ -340,7 +340,7 @@ attendanceRoutes.post('/checkout/:id?', checkout, async (req, res) => {
         const endTimestamp = new Date(`${timestamp}`).getTime();
         const workingHours = calculateWorkingHours(startTimestamp, endTimestamp);
 
-        const values = [JSON.stringify(checkout), note, activity, workingHours, timestamp, id]
+        const values = [JSON.stringify(checkout), note, activity, workingHours, timestamp.replace("T", " ").replace("Z", ""), id]
         await client.query(query, values);
 
         responHelper(res, statusResponse.OK.code, { message: 'Checkout berhasil.' });
