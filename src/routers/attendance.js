@@ -318,8 +318,11 @@ attendanceRoutes.post('/checkout/:id?', checkout, async (req, res) => {
         WHERE id = $6
         `;
 
-        const today = new Date((check_out_time + 7 * 3600) * 1000);
-        const timestamp = today.toISOString();
+        const now = new Date();
+
+        const utcPlus7 = new Date(now.getTime() + 7 * 3600 * 1000);
+
+        const timestamp = utcPlus7.toISOString();
 
         const checkout = { latitude, longitude, status }
 
