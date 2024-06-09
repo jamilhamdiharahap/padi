@@ -271,8 +271,13 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
 
     const { check_in_time, latitude, longitude, status, work_type } = req.body
 
-    const today = new Date(check_in_time * 1000);
-    const checkInTime = formatterDate(today);
+    const now = new Date();
+
+    const utcPlus7 = new Date(now.getTime() + 7 * 3600 * 1000);
+
+    const timestamp = utcPlus7.toISOString();
+
+    const checkInTime = timestamp.replace("T", " ").replace("Z", "")
 
     const checkin = { latitude, longitude, status };
 
