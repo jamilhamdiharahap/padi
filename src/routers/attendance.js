@@ -298,7 +298,7 @@ attendanceRoutes.post('/checkin', checkin, async (req, res) => {
     SET checkin = $1, check_in_time = $2, work_type = $3
     WHERE (employee_id = $4 AND created_at = (SELECT MAX(created_at) FROM transactions WHERE employee_id = $4));
     `;
-    console.log(JSON.stringify(checkin))
+    
     await client.query(query, [JSON.stringify(checkin), checkInTime, work_type, employeeId]);
 
     responHelper(res, statusResponse.OK.code, { data: null, message: 'Checkin berhasil.' });

@@ -153,7 +153,7 @@ accountRoutes.post("/web/login", login, async (req, res) => {
 
 accountRoutes.post("/register", registerValidation, async (req, res) => {
   try {
-    const { email, reminder, question, password, full_name, date_of_birth, position } = req.body;
+    const { email, reminder, question, password, full_name, date_of_birth, position, location_id } = req.body;
 
     const usernameExists = await checkIfExists('email', email);
 
@@ -171,10 +171,10 @@ accountRoutes.post("/register", registerValidation, async (req, res) => {
       const queryAccount = `SELECT id FROM accounts WHERE email = $1`;
       const { rows } = await client.query(queryAccount, [email])
 
-      const query = `INSERT INTO employees (name, date_of_birth, position_id, account_id)
-      VALUES ($1, $2, $3, $4)`;
+      const query = `INSERT INTO employees (name, date_of_birth, position_id, account_id, location_id)
+      VALUES ($1, $2, $3, $4, $5)`;
 
-      const employees = await client.query(query, [full_name, date_of_birth, position, rows[0].id]);
+      const employees = await client.query(query, [full_name, date_of_birth, position, rows[0].id, location_id]);
       if (employees.command !== 'INSERT') {
         const deleteAccount = `DELETE FROM accounts WHERE email = $1`;
         await client.query(deleteAccount, [email]);
