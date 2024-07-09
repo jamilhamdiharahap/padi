@@ -6,7 +6,19 @@ import { authenticateUser } from "../utils/auth.js";
 
 const locationRouter = express.Router();
 
+locationRouter.get("/location/find-all", async (req, res) => {
+    try {
+        let query = 'SELECT * FROM office_locations';
+        const { rows } = await client.query(query);
+        responHelper(res, 200, { data: rows, message: 'Data berhasil ditemukan.' });
+    } catch (error) {
+        console.error(error);
+        responHelper(res, 500, { message: 'Internal server error.' });
+    }
+});
+
 locationRouter.get("/location", async (req, res) => {
+
     let token = req.header("token");
     let auth = authenticateUser(token);
 
@@ -38,19 +50,6 @@ locationRouter.get("/location", async (req, res) => {
         }
     }
 });
-
-
-locationRouter.get("/location/find-all", async (req, res) => {
-    try {
-            let query = 'SELECT * FROM office_locations';
-            const { rows } = await client.query(query);
-            responHelper(res, 200, { data: rows, message: 'Data berhasil ditemukan.' });
-        } catch (error) {
-            console.error(error);
-            responHelper(res, 500, { message: 'Internal server error.' });
-        }
-});
-
 
 
 locationRouter.post("/location", async (req, res) => {

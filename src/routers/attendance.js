@@ -10,15 +10,6 @@ import { formatterDate, formatterDateTwo, formatterDayOff } from "../helper/form
 
 const attendanceRoutes = express.Router();
 
-attendanceRoutes.use((req, res, next) => {
-  const token = req.header("token");
-
-  if (!token) {
-    return res.status(401).json({ error: "Header 'Token' tidak ada." });
-  }
-  next();
-});
-
 function parseTimeToMinutes(timeString) {
   if (timeString === null) return 0;
   const [hours, minutes] = timeString.split(":");

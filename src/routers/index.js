@@ -8,6 +8,7 @@ import scheduleRouter from "./cron.js";
 
 const routers = express.Router();
 
+
 routers.use((req, res, next) => {
   const apiKey = req.header("API-KEY");
   if (!apiKey) {
@@ -19,6 +20,15 @@ routers.use((req, res, next) => {
   }
   next();
 });
+
+// routers.use((req, res, next) => {
+//   const token = req.header("token");
+
+//   if (!token) {
+//     return res.status(401).json({ error: "Header 'Token' tidak ada." });
+//   }
+//   next();
+// });
 
 routers.use("/api/v1", accountRoutes);
 routers.use("/api/v1", questionRouter);
