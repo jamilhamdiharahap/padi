@@ -19,12 +19,12 @@ locationRouter.get("/location", async (req, res) => {
             const offset = (page - 1) * limit;
 
             let query = 'SELECT * FROM office_locations WHERE name ILIKE $1 LIMIT $2 OFFSET $3';
-            let querycount = 'SELECT count(*) FROM office_locations';
+            let querycount = 'SELECT count(*) FROM office_locations WHERE name ILIKE $1';
 
             let queryParams = [`%${keyword}%`, limit, offset];
 
             const { rows } = await client.query(query, queryParams);
-            const total_elements = await client.query(querycount);
+            const total_elements = await client.query(querycount, [`%${keyword}%`]);
 
             const paging = {
                 total_elements: parseInt(total_elements.rows[0].count),
@@ -41,13 +41,7 @@ locationRouter.get("/location", async (req, res) => {
 
 
 locationRouter.get("/location/find-all", async (req, res) => {
-    let token = req.header("token");
-    let auth = authenticateUser(token);
-
-    if (auth.status !== 200) {
-        return responHelper(res, auth.status, { data: auth })
-    } else {
-        try {
+    try {
             let query = 'SELECT * FROM office_locations';
             const { rows } = await client.query(query);
             responHelper(res, 200, { data: rows, message: 'Data berhasil ditemukan.' });
@@ -55,7 +49,6 @@ locationRouter.get("/location/find-all", async (req, res) => {
             console.error(error);
             responHelper(res, 500, { message: 'Internal server error.' });
         }
-    }
 });
 
 
