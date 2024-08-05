@@ -40,4 +40,30 @@ employeeRouter.get("/employee", async (req, res) => {
     }
 });
 
+employeeRouter.post("/employee-delete", async (req, res) => {
+    const { id } = req.body
+
+    let token = req.header("token");
+    let auth = authenticateUser(token);
+
+    if (auth.status !== 200) {
+        return responHelper(res, auth.status, { data: auth })
+    } else {
+        try {
+
+            const queryTransaction = 'DELETE FROM transactions WHERE employee_id = $1'
+            await client.query(queryTransaction, [id])
+
+            const queryEmployee = 'DELETE FROM employees WHERE id = $1'
+            await client.query(queryEmployee, [id])
+            
+            responHelper(res, 200, { message: 'Data berhasil dihapus.' });
+        } catch (error) {
+            console.error(error);
+            responHelper(res, 500, { message: 'Internal server error.' });
+        }
+    }
+});
+
+
 export default employeeRouter;

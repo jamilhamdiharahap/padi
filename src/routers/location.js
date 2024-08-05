@@ -8,7 +8,7 @@ const locationRouter = express.Router();
 
 locationRouter.get("/location/find-all", async (req, res) => {
     try {
-        let query = 'SELECT * FROM office_locations';
+        let query = 'SELECT * FROM office_locations ORDER BY created_at desc';
         const { rows } = await client.query(query);
         responHelper(res, 200, { data: rows, message: 'Data berhasil ditemukan.' });
     } catch (error) {
@@ -30,7 +30,7 @@ locationRouter.get("/location", async (req, res) => {
 
             const offset = (page - 1) * limit;
 
-            let query = 'SELECT * FROM office_locations WHERE name ILIKE $1 LIMIT $2 OFFSET $3';
+            let query = 'SELECT * FROM office_locations WHERE name ILIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3';
             let querycount = 'SELECT count(*) FROM office_locations WHERE name ILIKE $1';
 
             let queryParams = [`%${keyword}%`, limit, offset];
@@ -60,6 +60,19 @@ locationRouter.post("/location", async (req, res) => {
         await client.query(query, [offine_name, longitude, latitude]);
 
         responHelper(res, 200, { message: 'Data berhasil ditambahkan.' });
+    } catch (error) {
+        responHelper(res, 500, { message: 'Internal server error.' });
+    }
+});
+
+locationRouter.post("/location-edit", async (req, res) => {
+    try {
+        const { id, offine_name, latitude, longitude } = req.body
+
+        const query = `UPDATE office_locations SET name = $1, longitude = $2, latitude = $3 WHERE id = $4`;
+        await client.query(query, [offine_name, longitude, latitude, id]);
+
+        responHelper(res, 200, { message: 'Edit berhasil.' });
     } catch (error) {
         responHelper(res, 500, { message: 'Internal server error.' });
     }
