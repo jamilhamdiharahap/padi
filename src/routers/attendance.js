@@ -217,11 +217,10 @@ attendanceRoutes.get('/transaction/:transactionId', async (req, res) => {
       let checkout = {}
       let checkIn = JSON.parse(item.checkin);
       let checkOut = JSON.parse(item.checkout);
-      console.log(checkOut)
       checkin.check_in_time = formatterDate(item.check_in_time)
-      checkin.latitude = checkIn.latitude
-      checkin.longitude = checkIn.longitude
-      checkin.status = checkIn.status
+      checkin.latitude = null
+      checkin.longitude = null
+      checkin.status = null
       if (checkOut !== null) {
         checkout.check_out_time = formatterDate(item.check_out_time)
         checkout.latitude = checkOut.latitude
