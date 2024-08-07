@@ -120,7 +120,7 @@ permissionRouter.post('/permission-approve', async (req, res) => {
                 currentCheckOutDate.setHours(17, 0, 0, 0);
 
                 const query = `INSERT INTO transactions (employee_id, checkin, checkout, work_type, working_hours, created_at, check_in_time, check_out_time) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
-                queries.push(client.query(query, [employeeId, checkin, checkout, 'LEAVE', '08:00', currentDate, currentCheckInDate, currentCheckOutDate]));
+                queries.push(client.query(query, [employeeId, checkin, checkout, status , '08:00', currentDate, currentCheckInDate, currentCheckOutDate]));
             }
             await Promise.all(queries);
             responHelper(res, 200, { message: 'Pengajuan berhasil diapprove.'});
