@@ -49,7 +49,7 @@ permissionRouter.post('/permission', async (req, res) => {
                 return responHelper(res, 400, { message: 'Durasi pengajuan tidak boleh lebih dari 12 hari.' });
             }
 
-            if (dayDiff > totalLeave) {
+            if (dayDiff > totalLeave && totalLeave > 0) {
                 return responHelper(res, 400, { message: `Sisa Cuti Anda Tinggal ${totalLeave}.` });
             }
 
