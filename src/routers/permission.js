@@ -50,7 +50,7 @@ permissionRouter.post('/permission', async (req, res) => {
             }
 
             if (dayDiff > totalLeave) {
-                return responHelper(res, 400, { message: `Sisa Cuti Anda Tinggal $${totalLeave}.` });
+                return responHelper(res, 400, { message: `Sisa Cuti Anda Tinggal ${totalLeave}.` });
             }
 
 
@@ -70,7 +70,7 @@ permissionRouter.post('/permission', async (req, res) => {
             const query = `INSERT INTO permissions (employee_id, status, reason, start_date, end_date, permission_status) VALUES ($1, $2, $3, $4, $5, $6)`;
             await client.query(query, [employeeId, status, reason, start_date, end_date, "PENDING"]);
             
-            responHelper(res, 200, { message: 'Pengajuan berhasil ditambahkan.' });
+            responHelper(res, 200, { message: `Pengajuan ${status} berhasil.` });
         }catch (error) {
             console.log(error)
             responHelper(res, 500, { message: 'Internal server error.' });
@@ -163,6 +163,35 @@ permissionRouter.get('/permission-o', async (req, res) => {
         }
     }
 });
+
+permissionRouter.get('/submission/:status?', async (req, res) => {
+    let token = req.header("token");
+    let auth = authenticateUser(token);
+    const status = req.params.status;
+
+    if (auth.status !== 200) {
+        return responHelper(res, auth.status, { data: auth });
+    }
+
+    try {
+        let query = 'SELECT * FROM permissions';
+        let queryParams = [];
+
+        if (status) {
+            query += ' WHERE permission_status = $1';
+            queryParams.push(status);
+        }
+
+        const { rows } = await client.query(query, queryParams);
+
+        responHelper(res, 200, { data: rows, message: 'Data berhasil ditemukan.' });
+    } catch (error) {
+        console.error(error);
+        responHelper(res, 500, { message: 'Internal server error.' });
+    }
+});
+
+
 
 export default permissionRouter;
 
