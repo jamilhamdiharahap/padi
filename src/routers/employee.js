@@ -54,9 +54,15 @@ employeeRouter.post("/employee-delete", async (req, res) => {
             const queryTransaction = 'DELETE FROM transactions WHERE employee_id = $1'
             await client.query(queryTransaction, [id])
 
+            const queryAccountId = 'SELECT account_id FROM employees WHERE id = $1'
+            const rows = await client.query(queryAccountId, [id])
+
             const queryEmployee = 'DELETE FROM employees WHERE id = $1'
             await client.query(queryEmployee, [id])
             
+            const queryAccount = 'DELETE FROM accounts WHERE id = $1'
+            await client.query(queryAccount, [rows.rows[0].account_id])
+
             responHelper(res, 200, { message: 'Data berhasil dihapus.' });
         } catch (error) {
             console.error(error);
