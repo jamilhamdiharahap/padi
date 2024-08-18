@@ -186,7 +186,7 @@ permissionRouter.get('/submission/:status?', async (req, res) => {
         let queryParams = [employeeId];
 
         if (status) {
-            query += '&& permission_status = $1';
+            query += 'AND permission_status = $2';
             queryParams.push(status);
         }
 
