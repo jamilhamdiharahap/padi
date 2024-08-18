@@ -86,7 +86,7 @@ permissionRouter.post('/permission-approve', async (req, res) => {
         return responHelper(res, auth.status, { data: auth })
     } else {
         try {
-            const { status, start_date, end_date, id, employeeId } = req.body
+            const { status, start_date, end_date, id, employeeId, reason, statusApprove } = req.body
 
             const currentDate = new Date();
             const startDate = new Date(start_date);
@@ -97,10 +97,10 @@ permissionRouter.post('/permission-approve', async (req, res) => {
             }
 
             const query = "UPDATE permissions SET permission_status = $1 WHERE id = $2"
-            if (status == 'rejected') {
+            if (statusApprove == 'rejected') {
                 await client.query(query, ['REJECTED', id])
                 return responHelper(res, 400, { message: 'Pengajuan telah ditolak.' });
-            } else if (status == 'approved') {
+            } else if (statusApprove == 'approved') {
                 await client.query(query, ['APPROVED', id])
             }
 
@@ -119,13 +119,12 @@ permissionRouter.post('/permission-approve', async (req, res) => {
                 const currentCheckOutDate = new Date(currentCheckInDate);
                 currentCheckOutDate.setHours(17, 0, 0, 0);
 
-                const query = `INSERT INTO transactions (employee_id, checkin, checkout, work_type, working_hours, created_at, check_in_time, check_out_time) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
-                queries.push(client.query(query, [employeeId, checkin, checkout, status , '08:00', currentDate, currentCheckInDate, currentCheckOutDate]));
+                const query = `INSERT INTO transactions (employee_id, checkin, checkout, activity, work_type, working_hours, created_at, check_in_time, check_out_time) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+                queries.push(client.query(query, [employeeId, checkin, checkout, reason, status , '08:00', currentDate, currentCheckInDate, currentCheckOutDate]));
             }
             await Promise.all(queries);
             responHelper(res, 200, { message: 'Pengajuan berhasil diapprove.'});
         } catch (error) {
-            console.log(error)
             responHelper(res, 500, { message: 'Internal server error.' });
         }
     }
@@ -174,11 +173,20 @@ permissionRouter.get('/submission/:status?', async (req, res) => {
     }
 
     try {
-        let query = 'SELECT * FROM permissions';
-        let queryParams = [];
+
+        const { employeeId } = verifyToken(token, process.env.SECRET_KEY)
+
+        let query = `
+            SELECT * FROM permissions 
+            WHERE employee_id = $1 
+            AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW()) 
+            AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW())
+        `;
+
+        let queryParams = [employeeId];
 
         if (status) {
-            query += ' WHERE permission_status = $1';
+            query += '&& permission_status = $1';
             queryParams.push(status);
         }
 

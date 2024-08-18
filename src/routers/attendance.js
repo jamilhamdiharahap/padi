@@ -184,6 +184,9 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
         activity: item.activity,
         work_type: item.work_type,
         working_hours: item.working_hours,
+        is_leave: item.work_type != 'WFO' || item.work_type != 'WFH' ? true : false,
+        leave_type: item.work_type,
+        leave_description: item.activity,
         day: formatterDateTwo(item.created_at),
         day_off: formatterDayOff(formatterDate(item.created_at))
       };
