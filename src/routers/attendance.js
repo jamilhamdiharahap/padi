@@ -102,6 +102,11 @@ attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
 
     const wfh = rows.filter(item => item.work_type === 'WFH')
     const wfo = rows.filter(item => item.work_type === 'WFO')
+    const leave = rows.filter(item => item.work_type === 'LEAVE')
+    const permit = rows.filter(item => item.work_type === 'PERMIT')
+    const outftown = rows.filter(item => item.work_type === 'OUTOFTOWN')
+    const sick = rows.filter(item => item.work_type === 'SICK')
+
     const late = rows.filter(item => {
       const checkInTime = new Date(formatterDate(item.check_in_time));
       return checkInTime.getHours() >= 8 && checkInTime.getMinutes() >= 30;
@@ -123,7 +128,8 @@ attendanceRoutes.get('/monthly-activity/:month/:year', async (req, res) => {
         not_present: notPresent.toString(),
         wfh: wfh.length.toString(),
         wfo: wfo.length.toString(),
-        late: late.toString()
+        late: late.toString(),
+        submission: leave.length + permit.length + outftown.length + sick.length
       },
       message: "Success"
     })
