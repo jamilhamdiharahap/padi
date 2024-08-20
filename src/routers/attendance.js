@@ -183,11 +183,11 @@ attendanceRoutes.get('/transaction/:month/:year', async (req, res) => {
         activity: item.activity,
         work_type: item.work_type === "WFH" || item.work_type === "WFO" ? item.work_type : "LEAVE",
         working_hours: item.working_hours,
-        is_leave: item.work_type !== "WFO" && item.work_type !== "WFH",
+        is_leave: item.work_type === "PERMIT" || item.work_type == "LEAVE" || item.work_type == "OUTOFTOWN" || item.work_type == "SICK",
         leave_type: item.work_type === "WFH" || item.work_type === "WFO" ? null : item.work_type,
         leave_description: item.activity,
         day: formatterDateTwo(item.created_at),
-        day_off: item.work_type !== "WFO" && item.work_type !== "WFH" ? "off" : formatterDayOff(formatterDate(item.created_at))
+        day_off: formatterDayOff(formatterDate(item.created_at))
       };
       // return {
       //   transaction_id: item.id,
